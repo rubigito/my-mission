@@ -1,0 +1,1100 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0d3f66">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MY MISSION">
+<title>MY MISSION — TODO &amp; STUDY</title>
+<style>
+  :root {
+    --bg-1: #050e1e;
+    --bg-2: #0a2140;
+    --panel: rgba(4, 14, 30, 0.88);
+    --panel-solid: #081a33;
+    --line: rgba(63, 169, 245, 0.35);
+    --cyan: #2fc4ff;
+    --cyan-deep: #0f6fae;
+    --cyan-glow: rgba(47, 196, 255, 0.55);
+    --ink: #f2f8ff;
+    --ink-sub: #9db8d6;
+    --ink-muted: #5f7793;
+    --red: #ff4d5e;
+    --amber: #ffc233;
+    --good: #35e0a1;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Meiryo", system-ui, sans-serif;
+    color: var(--ink);
+    min-height: 100vh;
+    background: #041124;
+    line-height: 1.6;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: 100%;
+  }
+  /* 深海に沈んでいくグラデーション: 上=水面の光 → 下=漆黒の深淵
+     (iOS Safariはbackground-attachment:fixed非対応のため固定レイヤーで描画) */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      repeating-linear-gradient(115deg, rgba(47,196,255,0.025) 0 2px, transparent 2px 90px),
+      radial-gradient(1100px 460px at 50% -8%, rgba(140,225,255,0.28), rgba(60,170,220,0.10) 45%, transparent 72%),
+      radial-gradient(700px 300px at 20% -4%, rgba(120,210,250,0.12), transparent 65%),
+      linear-gradient(180deg,
+        #12557f 0%,
+        #0d3f66 18%,
+        #0a2c4e 38%,
+        #071d38 58%,
+        #041124 76%,
+        #020813 90%,
+        #000308 100%);
+  }
+  .wrap {
+    max-width: 780px; margin: 0 auto;
+    padding: calc(14px + env(safe-area-inset-top)) calc(14px + env(safe-area-inset-right)) calc(70px + env(safe-area-inset-bottom)) calc(14px + env(safe-area-inset-left));
+  }
+
+  /* ===== ヘッダー ===== */
+  header { margin-bottom: 14px; }
+  .logo {
+    display: inline-block;
+    font-size: 26px; font-weight: 900; font-style: italic;
+    letter-spacing: 0.06em;
+    text-shadow: 0 0 18px var(--cyan-glow), 2px 2px 0 #041020;
+  }
+  .logo .accent { color: var(--cyan); }
+  .date-line {
+    font-size: 12.5px; color: var(--ink-sub); font-style: italic; letter-spacing: 0.12em;
+  }
+  .date-line::before { content: "▸ "; color: var(--cyan); }
+
+  /* ===== タブ ===== */
+  .tabs { display: flex; gap: 8px; margin: 14px 0 16px; flex-wrap: wrap; }
+  .tab {
+    position: relative;
+    transform: skewX(-12deg);
+    background: var(--panel-solid);
+    border: 1px solid var(--line);
+    color: var(--ink-sub);
+    font-weight: 900; font-style: italic; font-size: 15px;
+    padding: 10px 26px;
+    cursor: pointer;
+    transition: all .15s ease;
+    letter-spacing: 0.18em;
+  }
+  .tab > span { display: inline-block; transform: skewX(12deg); }
+  .tab:hover { border-color: var(--cyan); color: var(--ink); }
+  .tab.active {
+    background: linear-gradient(100deg, var(--cyan) 0%, var(--cyan-deep) 100%);
+    color: #03101f; border-color: var(--cyan);
+    box-shadow: 0 0 16px var(--cyan-glow);
+  }
+  /* 完了時のストック確認 */
+  .stock-prompt {
+    display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+    margin-top: 8px; padding: 8px 10px;
+    background: rgba(47,196,255,0.08);
+    border: 1px dashed var(--line);
+    font-size: 12.5px; color: var(--ink-sub);
+  }
+  .stock-prompt button { font-size: 12.5px; padding: 4px 12px; }
+
+  /* ===== パネル ===== */
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-left: 4px solid var(--cyan);
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%);
+    padding: 14px 16px;
+    margin-bottom: 14px;
+    backdrop-filter: blur(2px);
+  }
+  .panel-title {
+    font-weight: 900; font-style: italic; font-size: 15px;
+    letter-spacing: 0.1em; margin-bottom: 10px;
+    color: var(--cyan);
+  }
+  .panel-title::before { content: "◆ "; font-style: normal; }
+
+  /* ===== フォーム部品 ===== */
+  input[type="text"], input[type="date"], select, textarea {
+    font: inherit; font-size: 16px; /* 16px未満だとiOSでフォーカス時に画面が勝手にズームされる */
+    padding: 10px 12px;
+    min-height: 44px;
+    border: 1px solid var(--line);
+    background: rgba(2, 8, 18, 0.8);
+    color: var(--ink);
+    width: 100%;
+    border-radius: 0;
+  }
+  input:focus, select:focus, textarea:focus {
+    outline: none; border-color: var(--cyan);
+    box-shadow: 0 0 8px rgba(47,196,255,0.35);
+  }
+  input::placeholder, textarea::placeholder { color: var(--ink-muted); }
+  select { appearance: auto; }
+  button {
+    font: inherit; font-size: 14px; font-weight: 800;
+    transform: skewX(-10deg);
+    padding: 8px 18px;
+    min-height: 44px; /* タッチしやすい高さ */
+    touch-action: manipulation; /* ダブルタップズームを無効化して反応を速く */
+    border: 1px solid var(--line);
+    background: var(--panel-solid);
+    color: var(--ink);
+    cursor: pointer;
+    transition: all .15s ease;
+    letter-spacing: 0.05em;
+  }
+  button > span { display: inline-block; transform: skewX(10deg); }
+  button:hover { border-color: var(--cyan); box-shadow: 0 0 10px rgba(47,196,255,0.3); }
+  button.primary {
+    background: linear-gradient(100deg, var(--cyan) 0%, var(--cyan-deep) 100%);
+    color: #03101f; border-color: var(--cyan);
+  }
+  button.primary:hover { box-shadow: 0 0 16px var(--cyan-glow); }
+  button.ghost { border: none; background: none; padding: 8px 10px; min-height: 40px; min-width: 40px; color: var(--ink-muted); }
+  button.ghost:hover { color: var(--ink); box-shadow: none; }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .grid-3a { display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 8px; }
+  .form-stack { display: grid; gap: 8px; }
+
+  /* ===== スマホ最適化 ===== */
+  @media (max-width: 560px) {
+    .wrap { padding-left: calc(10px + env(safe-area-inset-left)); padding-right: calc(10px + env(safe-area-inset-right)); }
+    .logo { font-size: 22px; }
+    .tabs { gap: 6px; }
+    .tab { flex: 1; padding: 10px 6px; font-size: 13px; letter-spacing: 0.1em; text-align: center; }
+    .panel { padding: 12px 12px; }
+    .grid-3a { grid-template-columns: 1fr 1fr; }
+    .grid-3a button[type="submit"] { grid-column: 1 / -1; } /* 追加ボタンは全幅で押しやすく */
+    .progress-nums .big { font-size: 22px; }
+    .q-text { font-size: 16px; }
+    .choice { font-size: 14px; padding: 12px 14px; }
+    .verdict { font-size: 24px; }
+    .quiz-center .big-rank { font-size: 62px; }
+    .sort-row { font-size: 12.5px; }
+    .io-buttons button { flex: 1 1 45%; }
+  }
+
+  /* ===== 進捗バー ===== */
+  .progress-row { display: flex; align-items: center; gap: 14px; }
+  .progress-nums .big { font-size: 28px; font-weight: 900; font-style: italic; }
+  .progress-nums .big small { font-size: 14px; color: var(--ink-sub); font-weight: 600; }
+  .progress-nums .sub { font-size: 11px; color: var(--ink-sub); letter-spacing: 0.15em; }
+  .bar-track {
+    flex: 1; height: 12px;
+    background: rgba(2,8,18,0.9);
+    border: 1px solid var(--line);
+    transform: skewX(-18deg);
+    overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%; width: 0%;
+    background: linear-gradient(90deg, var(--cyan-deep), var(--cyan));
+    box-shadow: 0 0 12px var(--cyan-glow);
+    transition: width .35s ease;
+  }
+  .progress-pct { font-size: 16px; font-weight: 900; font-style: italic; min-width: 52px; text-align: right; color: var(--cyan); }
+
+  /* ===== チップ・バッジ ===== */
+  .filters { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 10px; }
+  .chip {
+    font-size: 12.5px; font-weight: 700;
+    padding: 4px 14px;
+    transform: skewX(-12deg);
+    border: 1px solid var(--line);
+    background: var(--panel-solid);
+    color: var(--ink-sub); cursor: pointer;
+  }
+  .chip > span { display: inline-block; transform: skewX(12deg); }
+  .chip.active { background: var(--cyan); color: #03101f; border-color: var(--cyan); }
+  .sort-row { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; font-size: 13px; color: var(--ink-sub); flex-wrap: wrap; }
+  .sort-row select { width: auto; padding: 5px 8px; font-size: 13px; }
+  .sort-row .spacer { flex: 1; }
+  label.small { font-size: 13px; color: var(--ink-sub); display: inline-flex; align-items: center; gap: 5px; cursor: pointer; }
+
+  .badge {
+    display: inline-block;
+    font-size: 11px; font-weight: 700;
+    padding: 2px 10px;
+    transform: skewX(-10deg);
+    border: 1px solid var(--line);
+    color: var(--ink-sub);
+  }
+  .badge > span { display: inline-block; transform: skewX(10deg); }
+  .badge.pri-high { border-color: var(--red); color: var(--red); }
+  .badge.pri-mid  { border-color: var(--amber); color: var(--amber); }
+  .badge.due-over  { background: var(--red); border-color: var(--red); color: #fff; }
+  .badge.due-today { background: var(--amber); border-color: var(--amber); color: #201200; }
+  .badge.due-soon  { border-color: var(--amber); color: var(--amber); }
+  .badge.tag { border-color: var(--cyan-deep); color: var(--cyan); }
+
+  /* ===== リスト ===== */
+  ul.cards { list-style: none; margin: 0; padding: 0; }
+  li.card {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 10px 12px;
+    background: var(--panel);
+    border: 1px solid rgba(63,169,245,0.2);
+    border-left: 3px solid var(--cyan-deep);
+    margin-bottom: 8px;
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%);
+  }
+  li.card.done { opacity: 0.45; border-left-color: var(--ink-muted); }
+  li.card.done:has(.stock-prompt) { opacity: 1; border-left-color: var(--cyan-deep); }
+  li.card.done .t-title { text-decoration: line-through; }
+  .t-check { width: 26px; height: 26px; margin-top: 2px; accent-color: var(--cyan); cursor: pointer; flex-shrink: 0; }
+  .t-body { flex: 1; min-width: 0; }
+  .t-title { font-size: 15px; font-weight: 700; word-break: break-word; }
+  .t-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 5px; align-items: center; }
+  .t-actions { display: flex; gap: 2px; flex-shrink: 0; }
+  .empty { text-align: center; color: var(--ink-muted); padding: 26px 0; font-size: 13.5px; font-style: italic; letter-spacing: 0.05em; }
+
+  .edit-row { display: grid; gap: 6px; margin-top: 8px; }
+  .edit-row input, .edit-row select, .edit-row textarea { font-size: 13.5px; padding: 6px 8px; }
+  .edit-btns { display: flex; gap: 8px; }
+
+  /* ===== 学びストック ===== */
+  .s-q { font-size: 14.5px; font-weight: 800; }
+  .s-q::before { content: "Q. "; color: var(--cyan); font-style: italic; }
+  .s-a { font-size: 13.5px; color: var(--ink-sub); margin-top: 2px; }
+  .s-a::before { content: "A. "; color: var(--good); font-weight: 800; font-style: italic; }
+  .s-memo {
+    font-size: 12.5px; color: var(--ink-muted); margin-top: 4px;
+    border-left: 2px solid var(--line); padding-left: 8px;
+    white-space: pre-wrap; word-break: break-word;
+  }
+  .s-stats { font-size: 11px; color: var(--ink-muted); margin-top: 4px; letter-spacing: 0.05em; }
+  .memo-only .s-q::before { content: "📝 "; }
+
+  /* ===== クイズ ===== */
+  .quiz-stage { min-height: 300px; }
+  .q-count {
+    font-size: 12px; color: var(--ink-sub); letter-spacing: 0.25em; font-style: italic; margin-bottom: 8px;
+  }
+  .q-text {
+    font-size: 18px; font-weight: 900;
+    padding: 16px;
+    background: rgba(2,8,18,0.7);
+    border: 1px solid var(--line);
+    border-left: 5px solid var(--cyan);
+    margin-bottom: 16px;
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%);
+  }
+  .q-text::before { content: "QUESTION"; display: block; font-size: 10px; letter-spacing: 0.4em; color: var(--cyan); font-style: italic; margin-bottom: 4px; }
+  .choices { display: grid; gap: 10px; }
+  .choice {
+    text-align: left;
+    transform: skewX(-8deg);
+    font-size: 15px; font-weight: 700;
+    padding: 12px 18px;
+    background: var(--panel-solid);
+    border: 1px solid var(--line);
+    color: var(--ink);
+    cursor: pointer;
+    transition: all .12s ease;
+  }
+  .choice > span { display: inline-block; transform: skewX(8deg); }
+  .choice .idx { color: var(--cyan); font-style: italic; font-weight: 900; margin-right: 10px; }
+  .choice:hover:not(:disabled) { background: rgba(47,196,255,0.15); border-color: var(--cyan); transform: skewX(-8deg) translateX(6px); }
+  .choice:disabled { cursor: default; }
+  .choice.correct { background: rgba(53,224,161,0.2); border-color: var(--good); box-shadow: 0 0 14px rgba(53,224,161,0.4); }
+  .choice.wrong { background: rgba(255,77,94,0.2); border-color: var(--red); }
+  .verdict {
+    font-size: 30px; font-weight: 900; font-style: italic; letter-spacing: 0.08em;
+    text-align: center; margin: 14px 0 6px; min-height: 44px;
+  }
+  .verdict.ok { color: var(--good); text-shadow: 0 0 20px rgba(53,224,161,0.6); }
+  .verdict.ng { color: var(--red); text-shadow: 0 0 20px rgba(255,77,94,0.5); }
+  .verdict-sub { text-align: center; font-size: 13px; color: var(--ink-sub); margin-bottom: 12px; min-height: 20px; }
+  .quiz-center { text-align: center; padding: 20px 0; }
+  .quiz-center .big-rank {
+    font-size: 78px; font-weight: 900; font-style: italic;
+    color: var(--cyan); text-shadow: 0 0 30px var(--cyan-glow);
+    line-height: 1.1;
+  }
+  .quiz-center .score-line { font-size: 16px; color: var(--ink-sub); margin-bottom: 16px; }
+  .quiz-setup { display: flex; gap: 10px; align-items: center; justify-content: center; flex-wrap: wrap; padding: 10px 0 18px; }
+  .quiz-setup select { width: auto; }
+  .next-row { text-align: center; margin-top: 10px; }
+
+  /* ===== 保存・読み込み ===== */
+  details.io { margin-top: 20px; }
+  details.io summary { cursor: pointer; font-size: 13px; color: var(--ink-sub); letter-spacing: 0.05em; }
+  .io-body { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+  .io-buttons { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  textarea#ioText {
+    font: 12.5px/1.5 ui-monospace, "Consolas", monospace;
+    min-height: 100px;
+  }
+  .notice { font-size: 12px; color: var(--ink-muted); }
+  .hidden { display: none !important; }
+
+  /* ===== PINロック ===== */
+  .lock-overlay {
+    position: fixed; inset: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: center;
+    background:
+      radial-gradient(900px 400px at 50% -8%, rgba(140,225,255,0.20), transparent 70%),
+      linear-gradient(180deg, #0d3f66 0%, #071d38 45%, #020813 100%);
+    padding: 20px;
+  }
+  .lock-box {
+    width: 100%; max-width: 340px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-left: 4px solid var(--cyan);
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%);
+    padding: 26px 22px;
+    text-align: center;
+  }
+  .lock-box .lock-logo {
+    font-size: 22px; font-weight: 900; font-style: italic;
+    letter-spacing: 0.08em; margin-bottom: 4px;
+    text-shadow: 0 0 16px var(--cyan-glow);
+  }
+  .lock-box .lock-msg { font-size: 13px; color: var(--ink-sub); margin-bottom: 16px; }
+  .lock-box input {
+    text-align: center; font-size: 26px; letter-spacing: 0.5em;
+    font-weight: 900; max-width: 200px; margin: 0 auto 12px;
+  }
+  .lock-box .lock-err { color: var(--red); font-size: 12.5px; min-height: 18px; margin-bottom: 8px; }
+  .lock-box .lock-forgot {
+    display: inline-block; margin-top: 14px;
+    font-size: 11.5px; color: var(--ink-muted);
+    background: none; border: none; min-height: 0; transform: none;
+    text-decoration: underline; cursor: pointer; padding: 4px;
+  }
+  .lock-box .lock-forgot:hover { color: var(--red); box-shadow: none; }
+</style>
+</head>
+<body>
+<div class="lock-overlay hidden" id="lockOverlay">
+  <div class="lock-box">
+    <div class="lock-logo">MY <span style="color:var(--cyan)">MISSION</span></div>
+    <div class="lock-msg" id="lockMsg"></div>
+    <input type="tel" id="lockPin" inputmode="numeric" maxlength="4" pattern="[0-9]*" placeholder="----" autocomplete="off">
+    <div class="lock-err" id="lockErr"></div>
+    <button class="primary" id="lockBtn"><span>解除</span></button>
+    <br>
+    <button class="lock-forgot hidden" id="lockForgot">PINを忘れた(データを消去して初期化)</button>
+  </div>
+</div>
+
+<div class="wrap">
+  <header>
+    <div class="logo">MY <span class="accent">MISSION</span></div>
+    <div class="date-line" id="todayLabel"></div>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab active" data-tab="todo"><span>MISSION</span></button>
+    <button class="tab" data-tab="study"><span>ARCHIVE</span></button>
+    <button class="tab" data-tab="quiz"><span>EXAM</span></button>
+  </nav>
+
+  <!-- ============ TODO タブ ============ -->
+  <section id="tab-todo">
+    <div class="panel">
+      <div class="progress-row">
+        <div class="progress-nums">
+          <div class="big"><span id="doneCount">0</span><small> / <span id="totalCount">0</span></small></div>
+          <div class="sub">CLEARED</div>
+        </div>
+        <div class="bar-track"><div class="bar-fill" id="barFill"></div></div>
+        <div class="progress-pct" id="pctLabel">0%</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">新しいタスク</div>
+      <form class="form-stack" id="addForm">
+        <input type="text" id="inTitle" placeholder="やることを入力…(例: 銀行に行く)" autocomplete="off">
+        <div class="grid-3a">
+          <input type="date" id="inDue" title="期限">
+          <select id="inPri" title="優先度">
+            <option value="mid">優先度: 中</option>
+            <option value="high">優先度: 高</option>
+            <option value="low">優先度: 低</option>
+          </select>
+          <select id="inCat" title="カテゴリ"></select>
+          <button type="submit" class="primary"><span>＋ 追加</span></button>
+        </div>
+      </form>
+    </div>
+
+    <div class="filters" id="catFilters"></div>
+    <div class="sort-row">
+      <span>並び順:</span>
+      <select id="sortSel">
+        <option value="smart">おすすめ(期限→優先度)</option>
+        <option value="due">期限が近い順</option>
+        <option value="pri">優先度が高い順</option>
+        <option value="added">追加した順</option>
+      </select>
+      <span class="spacer"></span>
+      <label class="small"><input type="checkbox" id="showDone" checked> 完了も表示</label>
+    </div>
+    <ul class="cards" id="taskList"></ul>
+    <div class="empty hidden" id="emptyMsg">タスクはまだありません。上のフォームから追加してください。</div>
+  </section>
+
+  <!-- ============ 学びストック タブ ============ -->
+  <section id="tab-study" class="hidden">
+    <div class="panel">
+      <div class="panel-title">学んだことを登録</div>
+      <form class="form-stack" id="studyForm">
+        <input type="text" id="sQ" placeholder="問い(例: Gitでユーザー名を設定するコマンドは?)" autocomplete="off">
+        <input type="text" id="sA" placeholder="答え(例: git config --global user.name)" autocomplete="off">
+        <textarea id="sMemo" rows="2" placeholder="自由メモ(任意)— 補足・気づき・出典など"></textarea>
+        <div class="grid-2">
+          <input type="text" id="sTag" placeholder="タグ(任意・例: Git)" autocomplete="off">
+          <button type="submit" class="primary"><span>＋ ストックする</span></button>
+        </div>
+        <div class="notice">※「問い」と「答え」の両方があるものがクイズの出題対象になります。メモだけの登録もOKです(問いを空欄にして答え欄かメモ欄に記入)。</div>
+      </form>
+    </div>
+    <div class="filters" id="tagFilters"></div>
+    <ul class="cards" id="studyList"></ul>
+    <div class="empty hidden" id="studyEmpty">まだ何もストックされていません。学んだことを登録していきましょう。</div>
+  </section>
+
+  <!-- ============ クイズ タブ ============ -->
+  <section id="tab-quiz" class="hidden">
+    <div class="panel quiz-stage">
+      <div class="panel-title">確認クイズ — 4択</div>
+      <div id="quizArea"></div>
+    </div>
+  </section>
+
+  <!-- 保存・読み込み(共通) -->
+  <details class="io">
+    <summary>💾 データの保存・読み込み(重要: 画面を閉じる前に保存を)</summary>
+    <div class="io-body">
+      <p class="notice" id="storageNotice"></p>
+      <div class="io-buttons">
+        <button id="btnExport"><span>⬇ ファイルに保存</span></button>
+        <button id="btnCopy"><span>📋 テキストをコピー</span></button>
+        <label><input type="file" id="fileImport" accept=".json,.txt" style="display:none;"><button id="btnImportFile"><span>⬆ ファイルから読み込み</span></button></label>
+        <button id="btnImportText"><span>↩ 下の欄から読み込み</span></button>
+        <label class="small"><input type="checkbox" id="importReplace"> 読み込み時に既存を置き換える</label>
+        <button id="btnPin" class="hidden"><span>🔒 PINの変更</span></button>
+      </div>
+      <div class="notice" id="ioMsg"></div>
+      <textarea id="ioText" placeholder="ここに保存したJSONを貼り付けて「下の欄から読み込み」を押すと復元できます。"></textarea>
+    </div>
+  </details>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  // ====== 状態(メモリ上のみ) ======
+  const CATEGORIES = ['仕事', '家庭', '買い物', '趣味', 'その他'];
+  let tasks = [
+    { id: 1, title: '(例)TODOリストに自分のタスクを入れる', due: todayStr(), pri: 'high', cat: 'その他', done: false, added: 1 },
+    { id: 2, title: '(例)完了したらチェックを付けてみる', due: '', pri: 'low', cat: 'その他', done: true, added: 2 }
+  ];
+  let study = [
+    { id: 1, q: '(例)Gitで名前とメールを設定するコマンドは?', a: 'git config --global', memo: 'user.name と user.email を1回だけ設定する。成功しても何も表示されない。', tag: 'Git', right: 0, wrong: 0, added: 1 },
+    { id: 2, q: '(例)Git設定の確認コマンドは?', a: 'git config --global --list', memo: '', tag: 'Git', right: 0, wrong: 0, added: 2 },
+    { id: 3, q: '(例)Gitのバージョン確認コマンドは?', a: 'git --version', memo: '', tag: 'Git', right: 0, wrong: 0, added: 3 },
+    { id: 4, q: '(例)Gitを入れると何ができる?', a: '変更履歴の記録と巻き戻し', memo: 'AIに編集を任せるときの安全網になる。', tag: 'Git', right: 0, wrong: 0, added: 4 }
+  ];
+  let nextId = 3, nextSid = 5;
+  let filterCat = 'all', filterTag = 'all';
+  let editingId = null, editingSid = null;
+  let stockPromptId = null; // 完了直後に「学びをストックする?」を出すタスク
+
+  // ====== 自動保存(ブラウザ保存) ======
+  // Safari等のブラウザで開くと自動保存が効く。
+  // 保存が使えない環境(一部のプレビュー等)では従来どおりメモリ動作+手動エクスポート。
+  const STORAGE_KEY = 'my-mission-data-v1';
+  let storageOK = false;
+  try {
+    const t = '__mm_test__';
+    window.localStorage.setItem(t, '1');
+    window.localStorage.removeItem(t);
+    storageOK = true;
+  } catch (_) { storageOK = false; }
+
+  function saveData() {
+    if (!storageOK) return;
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ tasks, study, nextId, nextSid }));
+    } catch (_) { /* 容量超過等は無視(手動保存は常に可能) */ }
+  }
+  function loadData() {
+    if (!storageOK) return false;
+    try {
+      const raw = window.localStorage.getItem(STORAGE_KEY);
+      if (!raw) return false;
+      const p = JSON.parse(raw);
+      if (!p || !Array.isArray(p.tasks) || !Array.isArray(p.study)) return false;
+      tasks = p.tasks; study = p.study;
+      nextId = Number(p.nextId) || (Math.max(0, ...tasks.map(t => t.id)) + 1);
+      nextSid = Number(p.nextSid) || (Math.max(0, ...study.map(s => s.id)) + 1);
+      return true;
+    } catch (_) { return false; }
+  }
+
+  // ====== ユーティリティ ======
+  const $ = id => document.getElementById(id);
+  function todayStr() {
+    const d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+  function daysUntil(dueStr) {
+    if (!dueStr) return null;
+    const t = new Date(todayStr() + 'T00:00:00');
+    const d = new Date(dueStr + 'T00:00:00');
+    return Math.round((d - t) / 86400000);
+  }
+  const PRI_LABEL = { high: '高', mid: '中', low: '低' };
+  const PRI_W = { high: 0, mid: 1, low: 2 };
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+  function fmtDue(dueStr) {
+    const n = daysUntil(dueStr);
+    if (n === null) return null;
+    const md = dueStr.slice(5).replace('-', '/');
+    if (n < 0)   return { cls: 'due-over',  txt: '⚠ 期限切れ ' + md };
+    if (n === 0) return { cls: 'due-today', txt: '🔔 今日まで' };
+    if (n <= 3)  return { cls: 'due-soon',  txt: '⏰ あと' + n + '日 (' + md + ')' };
+    return { cls: '', txt: '📅 ' + md };
+  }
+  function shuffle(arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  // ====== タブ ======
+  document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(x => x.classList.toggle('active', x === b));
+    ['todo', 'study', 'quiz'].forEach(t => $('tab-' + t).classList.toggle('hidden', t !== b.dataset.tab));
+    if (b.dataset.tab === 'quiz' && !quizState.running) renderQuizSetup();
+  }));
+
+  // ====== TODO ======
+  function renderTodo() {
+    const total = tasks.length;
+    const done = tasks.filter(t => t.done).length;
+    const pct = total ? Math.round(done / total * 100) : 0;
+    $('doneCount').textContent = done;
+    $('totalCount').textContent = total;
+    $('barFill').style.width = pct + '%';
+    $('pctLabel').textContent = pct + '%';
+
+    const cats = ['all', ...CATEGORIES];
+    $('catFilters').innerHTML = cats.map(c => {
+      const label = c === 'all' ? 'すべて' : c;
+      const count = c === 'all' ? tasks.length : tasks.filter(t => t.cat === c).length;
+      return '<button class="chip' + (filterCat === c ? ' active' : '') + '" data-cat="' + esc(c) + '"><span>' + esc(label) + (count ? ' (' + count + ')' : '') + '</span></button>';
+    }).join('');
+
+    let list = tasks.slice();
+    if (filterCat !== 'all') list = list.filter(t => t.cat === filterCat);
+    if (!$('showDone').checked) list = list.filter(t => !t.done);
+
+    const mode = $('sortSel').value;
+    function cmpDue(a, b) {
+      const da = a.due || '9999-12-31', db = b.due || '9999-12-31';
+      return da < db ? -1 : da > db ? 1 : 0;
+    }
+    list.sort((a, b) => {
+      if (a.done !== b.done) return a.done - b.done;
+      if (mode === 'added') return a.added - b.added;
+      if (mode === 'pri') return PRI_W[a.pri] - PRI_W[b.pri] || cmpDue(a, b);
+      if (mode === 'due') return cmpDue(a, b) || PRI_W[a.pri] - PRI_W[b.pri];
+      return cmpDue(a, b) || PRI_W[a.pri] - PRI_W[b.pri] || a.added - b.added;
+    });
+
+    $('taskList').innerHTML = list.map(t => {
+      const due = t.due ? fmtDue(t.due) : null;
+      const priCls = t.pri === 'high' ? 'pri-high' : t.pri === 'mid' ? 'pri-mid' : 'pri-low';
+      const editing = editingId === t.id;
+      const body = editing
+        ? '<div class="t-title">' + esc(t.title) + '</div>' +
+          '<div class="edit-row">' +
+            '<input type="text" class="e-title" value="' + esc(t.title) + '">' +
+            '<div class="grid-2">' +
+              '<input type="date" class="e-due" value="' + esc(t.due || '') + '">' +
+              '<select class="e-pri">' + ['high','mid','low'].map(p => '<option value="' + p + '"' + (t.pri === p ? ' selected' : '') + '>優先度: ' + PRI_LABEL[p] + '</option>').join('') + '</select>' +
+            '</div>' +
+            '<div class="grid-2">' +
+              '<select class="e-cat">' + CATEGORIES.map(c => '<option' + (t.cat === c ? ' selected' : '') + '>' + esc(c) + '</option>').join('') + '</select>' +
+              '<div class="edit-btns">' +
+                '<button data-act="save" class="primary"><span>保存</span></button>' +
+                '<button data-act="cancel"><span>キャンセル</span></button>' +
+              '</div>' +
+            '</div>' +
+          '</div>'
+        : '<div class="t-title">' + esc(t.title) + '</div>' +
+          '<div class="t-meta">' +
+            '<span class="badge ' + priCls + '"><span>優先度: ' + PRI_LABEL[t.pri] + '</span></span>' +
+            '<span class="badge"><span>' + esc(t.cat) + '</span></span>' +
+            (due ? '<span class="badge ' + due.cls + '"><span>' + due.txt + '</span></span>' : '') +
+          '</div>' +
+          (stockPromptId === t.id
+            ? '<div class="stock-prompt">✦ このタスクから学んだことをストックしますか?(単純作業ならそのままでOK)' +
+                '<button class="primary" data-act="stock"><span>ストックする</span></button>' +
+                '<button data-act="nostock"><span>しない</span></button>' +
+              '</div>'
+            : '');
+      return '<li class="card' + (t.done ? ' done' : '') + '" data-id="' + t.id + '">' +
+        '<input type="checkbox" class="t-check" ' + (t.done ? 'checked' : '') + ' title="完了">' +
+        '<div class="t-body">' + body + '</div>' +
+        (editing ? '' :
+        '<div class="t-actions">' +
+          '<button class="ghost" data-act="edit" title="編集"><span>✏️</span></button>' +
+          '<button class="ghost" data-act="del" title="削除"><span>🗑️</span></button>' +
+        '</div>') +
+      '</li>';
+    }).join('');
+    $('emptyMsg').classList.toggle('hidden', !!list.length);
+    saveData();
+  }
+
+  $('addForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const title = $('inTitle').value.trim();
+    if (!title) { $('inTitle').focus(); return; }
+    tasks.push({ id: nextId++, title, due: $('inDue').value, pri: $('inPri').value, cat: $('inCat').value, done: false, added: Date.now() });
+    $('inTitle').value = '';
+    $('inTitle').focus();
+    renderTodo();
+  });
+
+  $('taskList').addEventListener('click', e => {
+    const li = e.target.closest('li.card');
+    if (!li) return;
+    const id = Number(li.dataset.id);
+    const t = tasks.find(x => x.id === id);
+    if (!t) return;
+    const act = e.target.closest('[data-act]');
+    if (e.target.classList.contains('t-check')) {
+      t.done = e.target.checked;
+      // 完了にしたときだけ「学びをストックする?」を表示(単純作業なら「しない」でOK)
+      stockPromptId = t.done ? t.id : (stockPromptId === t.id ? null : stockPromptId);
+      renderTodo();
+    } else if (act && act.dataset.act === 'stock') {
+      stockPromptId = null;
+      renderTodo();
+      // ARCHIVEタブへ移動し、タスク名をメモ欄に引き継ぐ
+      document.querySelector('.tab[data-tab="study"]').click();
+      $('sMemo').value = 'タスク「' + t.title + '」より';
+      $('sQ').focus();
+    } else if (act && act.dataset.act === 'nostock') {
+      stockPromptId = null;
+      renderTodo();
+    } else if (act && act.dataset.act === 'del') {
+      tasks = tasks.filter(x => x.id !== id);
+      if (editingId === id) editingId = null;
+      if (stockPromptId === id) stockPromptId = null;
+      renderTodo();
+    } else if (act && act.dataset.act === 'edit') {
+      editingId = id; renderTodo();
+    } else if (act && act.dataset.act === 'save') {
+      const nt = li.querySelector('.e-title').value.trim();
+      if (nt) t.title = nt;
+      t.due = li.querySelector('.e-due').value;
+      t.pri = li.querySelector('.e-pri').value;
+      t.cat = li.querySelector('.e-cat').value;
+      editingId = null; renderTodo();
+    } else if (act && act.dataset.act === 'cancel') {
+      editingId = null; renderTodo();
+    }
+  });
+
+  $('catFilters').addEventListener('click', e => {
+    const b = e.target.closest('.chip');
+    if (!b) return;
+    filterCat = b.dataset.cat;
+    renderTodo();
+  });
+  $('sortSel').addEventListener('change', renderTodo);
+  $('showDone').addEventListener('change', renderTodo);
+
+  // ====== 学びストック ======
+  function allTags() {
+    const s = new Set();
+    study.forEach(x => { if (x.tag) s.add(x.tag); });
+    return [...s];
+  }
+  function renderStudy() {
+    const tags = ['all', ...allTags()];
+    $('tagFilters').innerHTML = tags.map(c => {
+      const label = c === 'all' ? 'すべて (' + study.length + ')' : c + ' (' + study.filter(x => x.tag === c).length + ')';
+      return '<button class="chip' + (filterTag === c ? ' active' : '') + '" data-tag="' + esc(c) + '"><span>' + esc(label) + '</span></button>';
+    }).join('');
+
+    let list = study.slice().sort((a, b) => b.added - a.added);
+    if (filterTag !== 'all') list = list.filter(x => x.tag === filterTag);
+
+    $('studyList').innerHTML = list.map(s => {
+      const editing = editingSid === s.id;
+      const quizzable = s.q && s.a;
+      const tries = s.right + s.wrong;
+      const acc = tries ? Math.round(s.right / tries * 100) : null;
+      const body = editing
+        ? '<div class="edit-row">' +
+            '<input type="text" class="e-q" value="' + esc(s.q) + '" placeholder="問い">' +
+            '<input type="text" class="e-a" value="' + esc(s.a) + '" placeholder="答え">' +
+            '<textarea class="e-memo" rows="2" placeholder="メモ">' + esc(s.memo || '') + '</textarea>' +
+            '<div class="grid-2">' +
+              '<input type="text" class="e-tag" value="' + esc(s.tag || '') + '" placeholder="タグ">' +
+              '<div class="edit-btns">' +
+                '<button data-act="save" class="primary"><span>保存</span></button>' +
+                '<button data-act="cancel"><span>キャンセル</span></button>' +
+              '</div>' +
+            '</div>' +
+          '</div>'
+        : '<div class="s-q">' + esc(s.q || '(メモ)') + '</div>' +
+          (s.a ? '<div class="s-a">' + esc(s.a) + '</div>' : '') +
+          (s.memo ? '<div class="s-memo">' + esc(s.memo) + '</div>' : '') +
+          '<div class="t-meta">' +
+            (s.tag ? '<span class="badge tag"><span>' + esc(s.tag) + '</span></span>' : '') +
+            (quizzable
+              ? '<span class="s-stats">' + (acc === null ? '出題実績なし' : '正答率 ' + acc + '% (' + s.right + '勝' + s.wrong + '敗)') + '</span>'
+              : '<span class="s-stats">クイズ対象外(問い・答えのどちらかが空欄)</span>') +
+          '</div>';
+      return '<li class="card' + (s.q ? '' : ' memo-only') + '" data-sid="' + s.id + '">' +
+        '<div class="t-body">' + body + '</div>' +
+        (editing ? '' :
+        '<div class="t-actions">' +
+          '<button class="ghost" data-act="edit" title="編集"><span>✏️</span></button>' +
+          '<button class="ghost" data-act="del" title="削除"><span>🗑️</span></button>' +
+        '</div>') +
+      '</li>';
+    }).join('');
+    $('studyEmpty').classList.toggle('hidden', !!list.length);
+    saveData();
+  }
+
+  $('studyForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const q = $('sQ').value.trim();
+    const a = $('sA').value.trim();
+    const memo = $('sMemo').value.trim();
+    if (!q && !a && !memo) { $('sQ').focus(); return; }
+    study.push({ id: nextSid++, q, a, memo, tag: $('sTag').value.trim(), right: 0, wrong: 0, added: Date.now() });
+    $('sQ').value = ''; $('sA').value = ''; $('sMemo').value = '';
+    $('sQ').focus();
+    renderStudy();
+  });
+
+  $('studyList').addEventListener('click', e => {
+    const li = e.target.closest('li.card');
+    if (!li) return;
+    const id = Number(li.dataset.sid);
+    const s = study.find(x => x.id === id);
+    if (!s) return;
+    const act = e.target.closest('[data-act]');
+    if (!act) return;
+    if (act.dataset.act === 'del') {
+      study = study.filter(x => x.id !== id);
+      if (editingSid === id) editingSid = null;
+      renderStudy();
+    } else if (act.dataset.act === 'edit') {
+      editingSid = id; renderStudy();
+    } else if (act.dataset.act === 'save') {
+      s.q = li.querySelector('.e-q').value.trim();
+      s.a = li.querySelector('.e-a').value.trim();
+      s.memo = li.querySelector('.e-memo').value.trim();
+      s.tag = li.querySelector('.e-tag').value.trim();
+      editingSid = null; renderStudy();
+    } else if (act.dataset.act === 'cancel') {
+      editingSid = null; renderStudy();
+    }
+  });
+
+  $('tagFilters').addEventListener('click', e => {
+    const b = e.target.closest('.chip');
+    if (!b) return;
+    filterTag = b.dataset.tag;
+    renderStudy();
+  });
+
+  // ====== クイズ ======
+  const quizState = { running: false, queue: [], index: 0, score: 0 };
+
+  function quizPool() { return study.filter(s => s.q && s.a); }
+
+  function renderQuizSetup() {
+    quizState.running = false;
+    const pool = quizPool();
+    const uniqueAnswers = new Set(pool.map(s => s.a)).size;
+    if (pool.length < 2 || uniqueAnswers < 2) {
+      $('quizArea').innerHTML = '<div class="empty">クイズには「問い」と「答え」が入った項目が2件以上必要です。<br>「学びストック」タブから登録してください。(現在 ' + pool.length + ' 件)</div>';
+      return;
+    }
+    const opts = [5, 10].filter(n => n <= pool.length).map(n => '<option value="' + n + '">' + n + '問</option>').join('') +
+      '<option value="all">全部 (' + pool.length + '問)</option>';
+    $('quizArea').innerHTML =
+      '<div class="quiz-center">' +
+        '<div style="font-size:15px; color:var(--ink-sub); margin-bottom:14px;">ストックした知識から出題します。<br>苦手な問題(正答率が低いもの)が出やすくなっています。</div>' +
+        '<div class="quiz-setup">' +
+          '<select id="quizLen">' + opts + '</select>' +
+          '<button class="primary" id="quizStart"><span>▶ 開始する</span></button>' +
+        '</div>' +
+        (uniqueAnswers < 4 ? '<div class="notice">※答えの種類が4つ未満のため、選択肢は' + uniqueAnswers + '択で出題します。</div>' : '') +
+      '</div>';
+    $('quizStart').addEventListener('click', startQuiz);
+  }
+
+  function weightedShuffle(pool) {
+    // 正答率が低い/未出題ほど先頭に来やすい重み付きシャッフル
+    return pool.map(s => {
+      const tries = s.right + s.wrong;
+      const acc = tries ? s.right / tries : 0.35; // 未出題は中間より苦手扱い
+      const w = (1.15 - acc) * (0.6 + Math.random());
+      return { s, w };
+    }).sort((a, b) => b.w - a.w).map(x => x.s);
+  }
+
+  function startQuiz() {
+    const pool = quizPool();
+    const lenSel = $('quizLen').value;
+    const n = lenSel === 'all' ? pool.length : Math.min(Number(lenSel), pool.length);
+    quizState.queue = weightedShuffle(pool).slice(0, n);
+    quizState.index = 0;
+    quizState.score = 0;
+    quizState.running = true;
+    renderQuestion();
+  }
+
+  function renderQuestion() {
+    const i = quizState.index;
+    if (i >= quizState.queue.length) { renderResult(); return; }
+    const item = quizState.queue[i];
+    const others = [...new Set(quizPool().filter(s => s.id !== item.id && s.a !== item.a).map(s => s.a))];
+    const distractors = shuffle(others).slice(0, 3);
+    const choices = shuffle([item.a, ...distractors]);
+    const marks = ['A', 'B', 'C', 'D'];
+    $('quizArea').innerHTML =
+      '<div class="q-count">Q ' + (i + 1) + ' / ' + quizState.queue.length + '   SCORE: ' + quizState.score + '</div>' +
+      '<div class="q-text">' + esc(item.q) + '</div>' +
+      '<div class="choices">' +
+        choices.map((c, k) => '<button class="choice" data-ans="' + esc(c) + '"><span><span class="idx">' + marks[k] + '</span>' + esc(c) + '</span></button>').join('') +
+      '</div>' +
+      '<div class="verdict" id="verdict"></div>' +
+      '<div class="verdict-sub" id="verdictSub"></div>' +
+      '<div class="next-row hidden" id="nextRow"><button class="primary" id="btnNext"><span>次へ ▸</span></button></div>';
+    document.querySelectorAll('.choice').forEach(b => b.addEventListener('click', () => answer(b, item)));
+  }
+
+  function answer(btn, item) {
+    const picked = btn.dataset.ans;
+    const ok = picked === item.a;
+    document.querySelectorAll('.choice').forEach(b => {
+      b.disabled = true;
+      if (b.dataset.ans === item.a) b.classList.add('correct');
+      else if (b === btn && !ok) b.classList.add('wrong');
+    });
+    const v = $('verdict');
+    if (ok) {
+      item.right++; quizState.score++;
+      v.textContent = 'CORRECT!'; v.className = 'verdict ok';
+    } else {
+      item.wrong++;
+      v.textContent = 'MISS…'; v.className = 'verdict ng';
+      $('verdictSub').textContent = '正解: ' + item.a;
+    }
+    if (item.memo) $('verdictSub').textContent += (ok ? '' : ' / ') + '📝 ' + item.memo;
+    saveData();
+    $('nextRow').classList.remove('hidden');
+    $('btnNext').addEventListener('click', () => { quizState.index++; renderQuestion(); });
+    $('btnNext').focus();
+  }
+
+  function renderResult() {
+    quizState.running = false;
+    const n = quizState.queue.length;
+    const pct = n ? Math.round(quizState.score / n * 100) : 0;
+    const rank = pct === 100 ? 'S' : pct >= 80 ? 'A' : pct >= 60 ? 'B' : pct >= 40 ? 'C' : 'D';
+    const msg = { S: '完璧!全問正解!', A: 'すばらしい!あと少しで満点!', B: 'いい調子。苦手を復習しよう', C: 'もう一周して定着させよう', D: 'ストックを見直してから再挑戦!' }[rank];
+    $('quizArea').innerHTML =
+      '<div class="quiz-center">' +
+        '<div style="font-size:11px; letter-spacing:0.4em; color:var(--ink-sub); font-style:italic;">RESULT</div>' +
+        '<div class="big-rank">' + rank + '</div>' +
+        '<div class="score-line">' + quizState.score + ' / ' + n + ' 問正解 (' + pct + '%)<br>' + msg + '</div>' +
+        '<div class="quiz-setup">' +
+          '<button class="primary" id="btnRetry"><span>↻ もう一度</span></button>' +
+          '<button id="btnBackSetup"><span>設定に戻る</span></button>' +
+        '</div>' +
+      '</div>';
+    $('btnRetry').addEventListener('click', () => { renderQuizSetup(); const st = $('quizStart'); if (st) st.click(); });
+    $('btnBackSetup').addEventListener('click', renderQuizSetup);
+    renderStudy();
+  }
+
+  // ====== 保存・読み込み ======
+  function serialize() {
+    return JSON.stringify({
+      version: 2,
+      tasks: tasks.map(({ id, added, ...rest }) => rest),
+      study: study.map(({ id, added, ...rest }) => rest)
+    }, null, 2);
+  }
+  function ioMsg(m) { $('ioMsg').textContent = m; setTimeout(() => { if ($('ioMsg').textContent === m) $('ioMsg').textContent = ''; }, 4000); }
+
+  $('btnExport').addEventListener('click', () => {
+    const blob = new Blob([serialize()], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'my-mission-' + todayStr() + '.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+  $('btnCopy').addEventListener('click', async () => {
+    const txt = serialize();
+    $('ioText').value = txt;
+    const b = $('btnCopy').querySelector('span');
+    try { await navigator.clipboard.writeText(txt); b.textContent = '✓ コピーしました'; }
+    catch (_) { $('ioText').select(); b.textContent = '選択したのでCtrl+Cを'; }
+    setTimeout(() => b.textContent = '📋 テキストをコピー', 2500);
+  });
+  $('btnImportFile').addEventListener('click', e => { e.preventDefault(); $('fileImport').click(); });
+  $('fileImport').addEventListener('change', e => {
+    const f = e.target.files[0];
+    if (!f) return;
+    const r = new FileReader();
+    r.onload = () => importText(String(r.result));
+    r.readAsText(f);
+    e.target.value = '';
+  });
+  $('btnImportText').addEventListener('click', () => importText($('ioText').value));
+
+  function normTask(o) {
+    return {
+      title: String(o.title || o.name || '').trim(),
+      due: /^\d{4}-\d{2}-\d{2}$/.test(o.due || '') ? o.due : '',
+      pri: ['high','mid','low'].includes(o.pri) ? o.pri : 'mid',
+      cat: CATEGORIES.includes(o.cat) ? o.cat : 'その他',
+      done: !!o.done
+    };
+  }
+  function normStudy(o) {
+    return {
+      q: String(o.q || o.question || '').trim(),
+      a: String(o.a || o.answer || '').trim(),
+      memo: String(o.memo || '').trim(),
+      tag: String(o.tag || '').trim(),
+      right: Number(o.right) || 0,
+      wrong: Number(o.wrong) || 0
+    };
+  }
+  function importText(raw) {
+    raw = raw.trim();
+    if (!raw) { ioMsg('読み込む内容がありません。下の欄に貼り付けるか、ファイルを選択してください。'); return; }
+    let newTasks = [], newStudy = [];
+    try {
+      const p = JSON.parse(raw);
+      if (Array.isArray(p)) {
+        newTasks = p.map(normTask).filter(o => o.title);
+      } else if (p && typeof p === 'object') {
+        if (Array.isArray(p.tasks)) newTasks = p.tasks.map(normTask).filter(o => o.title);
+        if (Array.isArray(p.study)) newStudy = p.study.map(normStudy).filter(o => o.q || o.a || o.memo);
+      }
+    } catch (_) {
+      newTasks = raw.split('\n').map(s => s.replace(/^[-*・☐□✓✔\s]+/, '').trim()).filter(Boolean)
+        .map(s => ({ title: s, due: '', pri: 'mid', cat: 'その他', done: false }));
+    }
+    if (!newTasks.length && !newStudy.length) { ioMsg('データを読み取れませんでした。形式をご確認ください。'); return; }
+    if ($('importReplace').checked || (tasks.length === 0 && study.length === 0)) { tasks = []; study = []; }
+    newTasks.forEach(o => tasks.push({ ...o, id: nextId++, added: Date.now() + nextId }));
+    newStudy.forEach(o => study.push({ ...o, id: nextSid++, added: Date.now() + nextSid }));
+    ioMsg('タスク' + newTasks.length + '件、学びストック' + newStudy.length + '件を読み込みました。');
+    renderTodo(); renderStudy();
+  }
+
+  // ====== PINロック ======
+  // ・自動保存が使える環境(Safari等)でのみ有効。プレビュー等ではスキップ。
+  // ・PINは端末内にのみ保存(簡易ロックであり、暗号化ではありません)
+  const PIN_KEY = 'my-mission-pin-v1';
+  function hashPin(p) {
+    let h = 7;
+    for (const c of String(p)) h = (h * 31 + c.charCodeAt(0)) % 1000000007;
+    return 'h' + h.toString(36);
+  }
+  function getPin() { try { return window.localStorage.getItem(PIN_KEY); } catch (_) { return null; } }
+  function setPin(v) { try { window.localStorage.setItem(PIN_KEY, v); } catch (_) {} }
+
+  let lockMode = 'unlock'; // 'setup' | 'unlock' | 'change'
+  function showLock(mode) {
+    lockMode = mode;
+    $('lockOverlay').classList.remove('hidden');
+    $('lockErr').textContent = '';
+    $('lockPin').value = '';
+    $('lockForgot').classList.toggle('hidden', mode !== 'unlock');
+    $('lockMsg').textContent = mode === 'unlock'
+      ? '4桁のPINを入力してください'
+      : '新しい4桁のPINを設定してください(起動時に必要になります)';
+    $('lockBtn').querySelector('span').textContent = mode === 'unlock' ? '解除' : '設定する';
+    setTimeout(() => $('lockPin').focus(), 50);
+  }
+  function hideLock() { $('lockOverlay').classList.add('hidden'); }
+
+  $('lockBtn').addEventListener('click', () => {
+    const v = $('lockPin').value.trim();
+    if (!/^\d{4}$/.test(v)) { $('lockErr').textContent = '数字4桁で入力してください'; return; }
+    if (lockMode === 'unlock') {
+      if (hashPin(v) === getPin()) hideLock();
+      else { $('lockErr').textContent = 'PINが違います'; $('lockPin').value = ''; }
+    } else {
+      setPin(hashPin(v));
+      hideLock();
+    }
+  });
+  $('lockPin').addEventListener('keydown', e => { if (e.key === 'Enter') $('lockBtn').click(); });
+
+  let forgotArmed = false;
+  $('lockForgot').addEventListener('click', () => {
+    if (!forgotArmed) {
+      forgotArmed = true;
+      $('lockForgot').textContent = '⚠ 本当に初期化しますか?(タスク・学びが全て消えます)もう一度タップで実行';
+      return;
+    }
+    try { window.localStorage.removeItem(STORAGE_KEY); window.localStorage.removeItem(PIN_KEY); } catch (_) {}
+    location.reload();
+  });
+
+  $('btnPin').addEventListener('click', () => showLock('change'));
+
+  // ====== 初期化 ======
+  loadData();
+  if (storageOK) {
+    $('btnPin').classList.remove('hidden');
+    if (getPin()) showLock('unlock');
+    else showLock('setup');
+  }
+  $('storageNotice').textContent = storageOK
+    ? '✓ 自動保存が有効です。このブラウザに変更が自動で保存されます。機種変更やバックアップ用に、ときどき「ファイルに保存」もおすすめします。'
+    : '⚠ この表示環境では自動保存が使えません。閉じる前に「ファイルに保存」でバックアップし、次回そのファイルを読み込んで復元してください。';
+  $('inCat').innerHTML = CATEGORIES.map(c => '<option value="' + esc(c) + '">' + esc(c) + '</option>').join('');
+  const now = new Date();
+  const youbi = ['SUN','MON','TUE','WED','THU','FRI','SAT'][now.getDay()];
+  $('todayLabel').textContent = now.getMonth() + 1 + '/' + now.getDate() + ' ' + youbi + ' — ' + now.getFullYear();
+  renderTodo();
+  renderStudy();
+  renderQuizSetup();
+})();
+</script>
+</body>
+</html>
