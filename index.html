@@ -173,7 +173,7 @@
     .wrap { padding-left: calc(10px + env(safe-area-inset-left)); padding-right: calc(10px + env(safe-area-inset-right)); }
     .logo { font-size: 22px; }
     .tabs { gap: 6px; }
-    .tab { flex: 1; padding: 10px 6px; font-size: 13px; letter-spacing: 0.1em; text-align: center; }
+    .tab { flex: 1; padding: 10px 4px; font-size: 11.5px; letter-spacing: 0.06em; text-align: center; }
     .panel { padding: 12px 12px; }
     .grid-3a { grid-template-columns: 1fr 1fr; }
     .grid-3a button[type="submit"] { grid-column: 1 / -1; } /* 追加ボタンは全幅で押しやすく */
@@ -401,6 +401,7 @@
     <button class="tab active" data-tab="todo"><span>MISSION</span></button>
     <button class="tab" data-tab="study"><span>ARCHIVE</span></button>
     <button class="tab" data-tab="quiz"><span>EXAM</span></button>
+    <button class="tab" data-tab="req"><span>REQUEST</span></button>
   </nav>
 
   <!-- ============ TODO タブ ============ -->
@@ -474,6 +475,29 @@
     <div class="panel quiz-stage">
       <div class="panel-title">確認クイズ — 4択</div>
       <div id="quizArea"></div>
+    </div>
+  </section>
+
+  <!-- ============ リクエスト タブ ============ -->
+  <section id="tab-req" class="hidden">
+    <div class="panel">
+      <div class="panel-title">改善リクエストを作成</div>
+      <form class="form-stack" id="reqForm">
+        <select id="reqType">
+          <option>機能追加の要望</option>
+          <option>デザイン変更の要望</option>
+          <option>不具合の報告</option>
+          <option>クイズ問題の作成依頼</option>
+          <option>その他</option>
+        </select>
+        <textarea id="reqText" rows="5" placeholder="変更したい点・追加してほしい機能などを自由に書いてください&#10;(例: タスクに繰り返し設定を付けてほしい)"></textarea>
+        <div class="grid-2">
+          <button type="button" class="primary" id="reqShare"><span>📤 共有して送る</span></button>
+          <button type="button" id="reqCopy"><span>📋 コピーする</span></button>
+        </div>
+        <div class="notice" id="reqMsg"></div>
+        <p class="notice">「共有して送る」→ 共有シートから<b>Claudeアプリ</b>を選ぶと、そのままチャットに貼れます(Claudeが出ない場合は「コピーする」→ Claudeのチャットに貼り付け)。送り先はいつものCoworkの会話でOKです。※ここに書いた内容はどこかに自動送信されるものではなく、あなたがチャットに貼った時だけ届きます。個人情報は書かないでください。</p>
+      </form>
     </div>
   </section>
 
@@ -587,9 +611,46 @@
   // ====== タブ ======
   document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => {
     document.querySelectorAll('.tab').forEach(x => x.classList.toggle('active', x === b));
-    ['todo', 'study', 'quiz'].forEach(t => $('tab-' + t).classList.toggle('hidden', t !== b.dataset.tab));
+    ['todo', 'study', 'quiz', 'req'].forEach(t => $('tab-' + t).classList.toggle('hidden', t !== b.dataset.tab));
     if (b.dataset.tab === 'quiz' && !quizState.running) renderQuizSetup();
   }));
+
+  // ====== 改善リクエスト ======
+  function composeRequest() {
+    const body = $('reqText').value.trim();
+    if (!body) { $('reqMsg').textContent = 'リクエスト内容を入力してください。'; $('reqText').focus(); return null; }
+    const d = new Date();
+    return '【MY MISSIONへのリクエスト】\n' +
+      '種類: ' + $('reqType').value + '\n' +
+      '日付: ' + d.getFullYear() + '/' + (d.getMonth() + 1) + '/' + d.getDate() + '\n' +
+      '内容:\n' + body + '\n\n' +
+      '(このアプリのindex.htmlを更新してください)';
+  }
+  function reqDone(m) { $('reqMsg').textContent = m; setTimeout(() => { if ($('reqMsg').textContent === m) $('reqMsg').textContent = ''; }, 5000); }
+  $('reqShare').addEventListener('click', async () => {
+    const text = composeRequest();
+    if (!text) return;
+    if (navigator.share) {
+      try {
+        await navigator.share({ text });
+        reqDone('共有シートを開きました。Claudeアプリを選んで送信してください。');
+        $('reqText').value = '';
+      } catch (_) { /* キャンセルは無視 */ }
+    } else {
+      try { await navigator.clipboard.writeText(text); reqDone('この環境では共有が使えないためコピーしました。Claudeのチャットに貼り付けてください。'); }
+      catch (_) { reqDone('コピーできませんでした。「コピーする」をお試しください。'); }
+    }
+  });
+  $('reqCopy').addEventListener('click', async () => {
+    const text = composeRequest();
+    if (!text) return;
+    try { await navigator.clipboard.writeText(text); reqDone('✓ コピーしました。Claudeのチャットに貼り付けて送ってください。'); }
+    catch (_) {
+      $('reqText').value = text;
+      $('reqText').select();
+      reqDone('全文を選択しました。そのままコピーしてください。');
+    }
+  });
 
   // ====== TODO ======
   function renderTodo() {
