@@ -90,6 +90,86 @@
   }
   @media (prefers-reduced-motion: reduce) {
     .bubble { display: none; }
+    .cele-star, .cele-text { animation-duration: 0.6s !important; }
+  }
+  /* 海中に眠る白亜の都(塔と回廊のシルエット) */
+  #city {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    z-index: -1;
+    pointer-events: none;
+    width: 100%;
+    height: min(30vh, 240px);
+  }
+  #city svg { width: 100%; height: 100%; display: block; }
+
+  /* ===== ご褒美(星)システム ===== */
+  .reward-row {
+    display: flex; align-items: center; gap: 14px;
+    margin-top: 12px; padding-top: 12px;
+    border-top: 1px solid rgba(63,169,245,0.18);
+  }
+  .medallion {
+    width: 54px; height: 54px; border-radius: 50%;
+    flex-shrink: 0;
+    background: conic-gradient(from 25deg,
+      rgba(120,200,255,0.40), rgba(170,140,255,0.32),
+      rgba(255,205,130,0.30), rgba(130,255,210,0.28),
+      rgba(255,150,180,0.26), rgba(120,200,255,0.40));
+    border: 2px solid rgba(230,240,255,0.55);
+    box-shadow: 0 0 16px rgba(140,225,255,0.35), inset 0 0 14px rgba(255,255,255,0.28);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px;
+    position: relative;
+  }
+  .medallion::before {
+    content: ""; position: absolute; inset: 5px;
+    border-radius: 50%;
+    border: 1px dashed rgba(255,255,255,0.45);
+  }
+  .reward-info { flex: 1; min-width: 0; }
+  .reward-stars {
+    font-size: 18px; letter-spacing: 3px;
+    color: #ffd75e;
+    text-shadow: 0 0 10px rgba(255,215,94,0.65);
+    min-height: 24px;
+    word-break: break-all;
+  }
+  .reward-stars .none { color: var(--ink-muted); text-shadow: none; font-size: 13px; letter-spacing: 0.05em; font-style: italic; }
+  .reward-next { font-size: 11.5px; color: var(--ink-sub); }
+
+  /* 星獲得の祝福演出 */
+  #celebrate {
+    position: fixed; inset: 0; z-index: 300;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    pointer-events: none;
+  }
+  .cele-star {
+    font-size: 88px; line-height: 1;
+    color: #ffd75e;
+    text-shadow: 0 0 34px rgba(255,215,94,0.95), 0 0 70px rgba(140,225,255,0.6);
+    animation: cele-pop 2s ease forwards;
+  }
+  .cele-text {
+    margin-top: 6px;
+    font-size: 22px; font-weight: 900; font-style: italic;
+    letter-spacing: 0.28em; color: #fff;
+    text-shadow: 0 0 18px rgba(140,225,255,0.85);
+    animation: cele-fade 2s ease forwards;
+  }
+  @keyframes cele-pop {
+    0%   { transform: scale(0) rotate(-30deg); opacity: 0; }
+    25%  { transform: scale(1.35) rotate(8deg); opacity: 1; }
+    45%  { transform: scale(1) rotate(0deg); }
+    80%  { opacity: 1; }
+    100% { transform: scale(1.15); opacity: 0; }
+  }
+  @keyframes cele-fade {
+    0% { opacity: 0; transform: translateY(14px); }
+    25% { opacity: 1; transform: translateY(0); }
+    80% { opacity: 1; }
+    100% { opacity: 0; }
   }
   .wrap {
     max-width: 780px; margin: 0 auto;
@@ -413,7 +493,55 @@
 </style>
 </head>
 <body>
+<div id="city" aria-hidden="true">
+  <svg viewBox="0 0 1200 260" preserveAspectRatio="xMidYMax slice">
+    <!-- 白亜の都のシルエット -->
+    <g fill="rgba(226,240,255,0.10)">
+      <!-- 中央大聖堂 -->
+      <rect x="540" y="70" width="100" height="190"/>
+      <circle cx="590" cy="70" r="50"/>
+      <rect x="586" y="4" width="8" height="30"/>
+      <circle cx="590" cy="2" r="5"/>
+      <!-- 左右の尖塔 -->
+      <rect x="470" y="120" width="34" height="140"/>
+      <polygon points="470,120 487,84 504,120"/>
+      <rect x="676" y="120" width="34" height="140"/>
+      <polygon points="676,120 693,84 710,120"/>
+      <!-- 左の街並み -->
+      <rect x="80" y="170" width="52" height="90"/>
+      <circle cx="106" cy="170" r="26"/>
+      <rect x="180" y="196" width="150" height="64"/>
+      <rect x="250" y="150" width="26" height="46"/>
+      <polygon points="250,150 263,124 276,150"/>
+      <!-- 右の街並み -->
+      <rect x="880" y="188" width="140" height="72"/>
+      <rect x="930" y="140" width="28" height="48"/>
+      <polygon points="930,140 944,112 958,140"/>
+      <rect x="1080" y="164" width="56" height="96"/>
+      <circle cx="1108" cy="164" r="28"/>
+      <!-- 回廊(アーチ橋) -->
+      <rect x="330" y="222" width="210" height="38"/>
+      <rect x="640" y="222" width="240" height="38"/>
+    </g>
+    <!-- アーチの開口部(背景色でくり抜き表現) -->
+    <g fill="rgba(4,17,36,0.5)">
+      <path d="M352 260 v-20 a12 12 0 0 1 24 0 v20 z"/>
+      <path d="M396 260 v-20 a12 12 0 0 1 24 0 v20 z"/>
+      <path d="M440 260 v-20 a12 12 0 0 1 24 0 v20 z"/>
+      <path d="M484 260 v-20 a12 12 0 0 1 24 0 v20 z"/>
+      <path d="M662 260 v-20 a12 12 0 0 1 24 0 v20 z"/>
+      <path d="M706 260 v-20 a12 12 0 0 1 24 0 v20 z"/>
+      <path d="M750 260 v-20 a12 12 0 0 1 24 0 v20 z"/>
+      <path d="M794 260 v-20 a12 12 0 0 1 24 0 v20 z"/>
+      <path d="M838 260 v-20 a12 12 0 0 1 24 0 v20 z"/>
+      <!-- 大聖堂の窓 -->
+      <path d="M570 260 v-40 a20 20 0 0 1 40 0 v40 z"/>
+      <path d="M578 150 v-16 a12 12 0 0 1 24 0 v16 z"/>
+    </g>
+  </svg>
+</div>
 <div id="bubbles" aria-hidden="true"></div>
+<div id="celebrate" class="hidden" aria-hidden="true"></div>
 
 <div class="lock-overlay hidden" id="lockOverlay">
   <div class="lock-box">
@@ -450,6 +578,13 @@
         </div>
         <div class="bar-track"><div class="bar-fill" id="barFill"></div></div>
         <div class="progress-pct" id="pctLabel">0%</div>
+      </div>
+      <div class="reward-row">
+        <div class="medallion" id="medallion">★</div>
+        <div class="reward-info">
+          <div class="reward-stars" id="rewardStars"></div>
+          <div class="reward-next" id="rewardNext"></div>
+        </div>
       </div>
     </div>
 
@@ -573,6 +708,7 @@
     { id: 4, q: '(例)Gitを入れると何ができる?', a: '変更履歴の記録と巻き戻し', memo: 'AIに編集を任せるときの安全網になる。', tag: 'Git', right: 0, wrong: 0, added: 4 }
   ];
   let nextId = 3, nextSid = 5;
+  let stats = { totalDone: 0 }; // 累計完了数(ご褒美システム用)
   let filterCat = 'all', filterTag = 'all';
   let editingId = null, editingSid = null;
   let stockPromptId = null; // 完了直後に「学びをストックする?」を出すタスク
@@ -592,7 +728,7 @@
   function saveData() {
     if (!storageOK) return;
     try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ tasks, study, nextId, nextSid }));
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ tasks, study, nextId, nextSid, stats }));
     } catch (_) { /* 容量超過等は無視(手動保存は常に可能) */ }
   }
   function loadData() {
@@ -605,6 +741,8 @@
       tasks = p.tasks; study = p.study;
       nextId = Number(p.nextId) || (Math.max(0, ...tasks.map(t => t.id)) + 1);
       nextSid = Number(p.nextSid) || (Math.max(0, ...study.map(s => s.id)) + 1);
+      if (p.stats && typeof p.stats.totalDone === 'number') stats.totalDone = p.stats.totalDone;
+      else stats.totalDone = tasks.filter(t => t.done).length; // 旧データからの引き継ぎ
       return true;
     } catch (_) { return false; }
   }
@@ -765,7 +903,31 @@
       '</li>';
     }).join('');
     $('emptyMsg').classList.toggle('hidden', !!list.length);
+    renderReward();
     saveData();
+  }
+
+  // ====== ご褒美(星)表示 ======
+  function renderReward() {
+    const stars = Math.floor(stats.totalDone / 5);
+    const toNext = 5 - (stats.totalDone % 5);
+    const el = $('rewardStars');
+    if (stars <= 0) {
+      el.innerHTML = '<span class="none">タスクを5回完了すると最初の星が輝きます</span>';
+    } else if (stars <= 10) {
+      el.textContent = '★'.repeat(stars);
+    } else {
+      el.textContent = '★ × ' + stars;
+    }
+    $('rewardNext').textContent = '累計 ' + stats.totalDone + ' 回完了 / 次の星まであと ' + toNext + ' 回' + (stars >= 10 ? ' — 👑 白亜の都の主' : '');
+    $('medallion').textContent = stars >= 10 ? '👑' : '★';
+  }
+
+  function celebrate(starCount) {
+    const c = $('celebrate');
+    c.innerHTML = '<div class="cele-star">★</div><div class="cele-text">NUOVA STELLA — ' + starCount + '個目の星!</div>';
+    c.classList.remove('hidden');
+    setTimeout(() => { c.classList.add('hidden'); c.innerHTML = ''; }, 2100);
   }
 
   $('addForm').addEventListener('submit', e => {
@@ -787,9 +949,14 @@
     const act = e.target.closest('[data-act]');
     if (e.target.classList.contains('t-check')) {
       t.done = e.target.checked;
+      // ご褒美システム: 累計完了数を更新し、星が増えたら祝福演出
+      const starsBefore = Math.floor(stats.totalDone / 5);
+      stats.totalDone = Math.max(0, stats.totalDone + (t.done ? 1 : -1));
+      const starsAfter = Math.floor(stats.totalDone / 5);
       // 完了にしたときだけ「学びをストックする?」を表示(単純作業なら「しない」でOK)
       stockPromptId = t.done ? t.id : (stockPromptId === t.id ? null : stockPromptId);
       renderTodo();
+      if (starsAfter > starsBefore) celebrate(starsAfter);
     } else if (act && act.dataset.act === 'stock') {
       stockPromptId = null;
       renderTodo();
@@ -1044,9 +1211,10 @@
   // ====== 保存・読み込み ======
   function serialize() {
     return JSON.stringify({
-      version: 2,
+      version: 3,
       tasks: tasks.map(({ id, added, ...rest }) => rest),
-      study: study.map(({ id, added, ...rest }) => rest)
+      study: study.map(({ id, added, ...rest }) => rest),
+      stats: stats
     }, null, 2);
   }
   function ioMsg(m) { $('ioMsg').textContent = m; setTimeout(() => { if ($('ioMsg').textContent === m) $('ioMsg').textContent = ''; }, 4000); }
@@ -1108,6 +1276,7 @@
       } else if (p && typeof p === 'object') {
         if (Array.isArray(p.tasks)) newTasks = p.tasks.map(normTask).filter(o => o.title);
         if (Array.isArray(p.study)) newStudy = p.study.map(normStudy).filter(o => o.q || o.a || o.memo);
+        if (p.stats && typeof p.stats.totalDone === 'number' && $('importReplace').checked) stats.totalDone = Math.max(0, Math.floor(p.stats.totalDone));
       }
     } catch (_) {
       newTasks = raw.split('\n').map(s => s.replace(/^[-*・☐□✓✔\s]+/, '').trim()).filter(Boolean)
