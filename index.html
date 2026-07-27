@@ -6,8 +6,8 @@
 <meta name="theme-color" content="#0d3f66">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="MY MISSION">
-<title>MY MISSION — TODO &amp; STUDY</title>
+<meta name="apple-mobile-web-app-title" content="ATTIMO">
+<title>ATTIMO — TODO &amp; STUDY</title>
 <style>
   :root {
     --bg-1: #050e1e;
@@ -56,6 +56,40 @@
         #041124 76%,
         #020813 90%,
         #000308 100%);
+  }
+  /* 泡沫(うたかた)— 深海から立ちのぼる泡 */
+  #bubbles {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    overflow: hidden;
+  }
+  .bubble {
+    position: absolute;
+    bottom: -40px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 33% 30%,
+      rgba(200,240,255,0.55),
+      rgba(120,210,250,0.18) 45%,
+      rgba(47,196,255,0.06) 70%,
+      transparent 75%);
+    box-shadow: inset -2px -2px 4px rgba(47,196,255,0.15), 0 0 6px rgba(140,225,255,0.18);
+    opacity: 0;
+    animation-name: bubble-rise;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+    will-change: transform, opacity;
+  }
+  @keyframes bubble-rise {
+    0%   { transform: translate3d(0, 0, 0) scale(0.9); opacity: 0; }
+    8%   { opacity: var(--o, 0.4); }
+    50%  { transform: translate3d(calc(var(--drift) * 0.5), -55vh, 0) scale(1); }
+    85%  { opacity: var(--o, 0.4); }
+    100% { transform: translate3d(var(--drift), -112vh, 0) scale(1.08); opacity: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .bubble { display: none; }
   }
   .wrap {
     max-width: 780px; margin: 0 auto;
@@ -379,9 +413,11 @@
 </style>
 </head>
 <body>
+<div id="bubbles" aria-hidden="true"></div>
+
 <div class="lock-overlay hidden" id="lockOverlay">
   <div class="lock-box">
-    <div class="lock-logo">MY <span style="color:var(--cyan)">MISSION</span></div>
+    <div class="lock-logo">AT<span style="color:var(--cyan)">TIMO</span></div>
     <div class="lock-msg" id="lockMsg"></div>
     <input type="tel" id="lockPin" inputmode="numeric" maxlength="4" pattern="[0-9]*" placeholder="----" autocomplete="off">
     <div class="lock-err" id="lockErr"></div>
@@ -393,7 +429,7 @@
 
 <div class="wrap">
   <header>
-    <div class="logo">MY <span class="accent">MISSION</span></div>
+    <div class="logo">AT<span class="accent">TIMO</span></div>
     <div class="date-line" id="todayLabel"></div>
   </header>
 
@@ -620,7 +656,7 @@
     const body = $('reqText').value.trim();
     if (!body) { $('reqMsg').textContent = 'リクエスト内容を入力してください。'; $('reqText').focus(); return null; }
     const d = new Date();
-    return '【MY MISSIONへのリクエスト】\n' +
+    return '【ATTIMOへのリクエスト】\n' +
       '種類: ' + $('reqType').value + '\n' +
       '日付: ' + d.getFullYear() + '/' + (d.getMonth() + 1) + '/' + d.getDate() + '\n' +
       '内容:\n' + body + '\n\n' +
@@ -1019,7 +1055,7 @@
     const blob = new Blob([serialize()], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = 'my-mission-' + todayStr() + '.json';
+    a.download = 'attimo-' + todayStr() + '.json';
     a.click();
     URL.revokeObjectURL(a.href);
   });
@@ -1149,6 +1185,23 @@
     ? '✓ 自動保存が有効です。このブラウザに変更が自動で保存されます。機種変更やバックアップ用に、ときどき「ファイルに保存」もおすすめします。'
     : '⚠ この表示環境では自動保存が使えません。閉じる前に「ファイルに保存」でバックアップし、次回そのファイルを読み込んで復元してください。';
   $('inCat').innerHTML = CATEGORIES.map(c => '<option value="' + esc(c) + '">' + esc(c) + '</option>').join('');
+  // 泡沫の生成
+  (function makeBubbles() {
+    const holder = $('bubbles');
+    const n = Math.min(18, Math.max(10, Math.floor(window.innerWidth / 60)));
+    let html = '';
+    for (let i = 0; i < n; i++) {
+      const size = 4 + Math.random() * 12;                    // 4〜16px
+      const left = Math.random() * 100;                       // 横位置 %
+      const dur = 9 + Math.random() * 13;                     // 9〜22秒
+      const delay = -Math.random() * dur;                     // 最初から画面に散らばるよう負の遅延
+      const drift = (Math.random() * 80 - 40).toFixed(0);     // 横揺れ -40〜40px
+      const o = (0.15 + Math.random() * 0.35).toFixed(2);     // 透明度
+      html += '<span class="bubble" style="left:' + left.toFixed(1) + '%;width:' + size.toFixed(1) + 'px;height:' + size.toFixed(1) + 'px;animation-duration:' + dur.toFixed(1) + 's;animation-delay:' + delay.toFixed(1) + 's;--drift:' + drift + 'px;--o:' + o + '"></span>';
+    }
+    holder.innerHTML = html;
+  })();
+
   const now = new Date();
   const youbi = ['SUN','MON','TUE','WED','THU','FRI','SAT'][now.getDay()];
   $('todayLabel').textContent = now.getMonth() + 1 + '/' + now.getDate() + ' ' + youbi + ' — ' + now.getFullYear();
