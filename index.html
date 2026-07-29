@@ -291,6 +291,11 @@
     color: var(--cyan);
   }
   .panel-title::before { content: "◆ "; font-style: normal; }
+  .panel-title .jp {
+    font-size: 11px; color: var(--ink-sub);
+    font-style: normal; font-weight: 600;
+    margin-left: 8px; letter-spacing: 0.05em;
+  }
 
   /* ===== フォーム部品 ===== */
   input[type="text"], input[type="date"], select, textarea {
@@ -655,7 +660,7 @@
     </div>
 
     <div class="panel">
-      <div class="panel-title">新しいタスク</div>
+      <div class="panel-title">NUOVA MISSIONE<span class="jp">新しいタスク</span></div>
       <form class="form-stack" id="addForm">
         <input type="text" id="inTitle" placeholder="やることを入力…(例: 銀行に行く)" autocomplete="off">
         <div class="grid-3a">
@@ -690,7 +695,7 @@
   <!-- ============ 学びストック タブ ============ -->
   <section id="tab-study" class="hidden">
     <div class="panel">
-      <div class="panel-title">学んだことを登録</div>
+      <div class="panel-title">NUOVO SAPERE<span class="jp">学んだことを登録</span></div>
       <form class="form-stack" id="studyForm">
         <input type="text" id="sQ" placeholder="問い(例: Gitでユーザー名を設定するコマンドは?)" autocomplete="off">
         <input type="text" id="sA" placeholder="答え(例: git config --global user.name)" autocomplete="off">
@@ -710,7 +715,7 @@
   <!-- ============ クイズ タブ ============ -->
   <section id="tab-quiz" class="hidden">
     <div class="panel quiz-stage">
-      <div class="panel-title">確認クイズ — 4択</div>
+      <div class="panel-title">ESAME<span class="jp">確認クイズ(4択)</span></div>
       <div id="quizArea"></div>
     </div>
   </section>
@@ -718,7 +723,7 @@
   <!-- ============ DIARIO(学習記録)タブ ============ -->
   <section id="tab-diario" class="hidden">
     <div class="panel" id="normaPanel">
-      <div class="panel-title">今日のあゆみ</div>
+      <div class="panel-title">OGGI<span class="jp">今日のあゆみ</span></div>
       <div class="progress-row">
         <div class="progress-nums">
           <div class="big"><span id="todayMin">0</span><small> / <span id="normVal">120</span>分</small></div>
@@ -731,7 +736,7 @@
     </div>
 
     <div class="panel">
-      <div class="panel-title">学習・訓練を記録</div>
+      <div class="panel-title">ALLENAMENTO<span class="jp">学習・訓練を記録</span></div>
       <div class="form-stack">
         <input type="text" id="dMat" list="matList" placeholder="教材・内容(例: 問題集A、ピアノ)" autocomplete="off">
         <datalist id="matList"></datalist>
@@ -757,7 +762,7 @@
     </div>
 
     <div class="panel">
-      <div class="panel-title">休息を記録 — RIPOSO</div>
+      <div class="panel-title">RIPOSO<span class="jp">休息を記録</span></div>
       <div class="form-stack">
         <div class="grid-2">
           <select id="rType"></select>
@@ -781,7 +786,7 @@
     </div>
 
     <div class="panel">
-      <div class="panel-title">週間成績</div>
+      <div class="panel-title">PAGELLA<span class="jp">週間成績</span></div>
       <div class="wk-head">
         <span class="wk-rank" id="wkRank">-</span>
         <span class="wk-summary" id="wkSummary"></span>
@@ -791,7 +796,7 @@
     </div>
 
     <div class="panel">
-      <div class="panel-title">記録の履歴</div>
+      <div class="panel-title">STORIA<span class="jp">記録の履歴</span></div>
       <ul class="cards" id="sessList"></ul>
       <div class="empty hidden" id="sessEmpty">まだ記録がありません。上のタイマーか手動入力からどうぞ。</div>
       <div class="sort-row" style="margin-top:10px">
@@ -812,7 +817,7 @@
   <!-- ============ リクエスト タブ ============ -->
   <section id="tab-req" class="hidden">
     <div class="panel">
-      <div class="panel-title">改善リクエストを作成</div>
+      <div class="panel-title">RICHIESTA<span class="jp">改善リクエストを作成</span></div>
       <form class="form-stack" id="reqForm">
         <select id="reqType">
           <option>機能追加の要望</option>
@@ -822,19 +827,16 @@
           <option>その他</option>
         </select>
         <textarea id="reqText" rows="5" placeholder="変更したい点・追加してほしい機能などを自由に書いてください&#10;(例: タスクに繰り返し設定を付けてほしい)"></textarea>
-        <div class="grid-2">
-          <button type="button" class="primary" id="reqShare"><span>📤 共有して送る</span></button>
-          <button type="button" id="reqCopy"><span>📋 コピーする</span></button>
-        </div>
+        <button type="button" class="primary" id="reqShare"><span>📤 送信(コピー+共有を同時実行)</span></button>
         <div class="notice" id="reqMsg"></div>
-        <p class="notice">「共有して送る」→ 共有シートから<b>Claudeアプリ</b>を選ぶと、そのままチャットに貼れます(Claudeが出ない場合は「コピーする」→ Claudeのチャットに貼り付け)。送り先はいつものCoworkの会話でOKです。※ここに書いた内容はどこかに自動送信されるものではなく、あなたがチャットに貼った時だけ届きます。個人情報は書かないでください。</p>
+        <p class="notice">ボタン1つで<b>クリップボードへのコピーと共有シートの表示を同時に</b>行います。共有シートで<b>Claudeアプリ</b>を選べばそのまま送れますし、選べなくてもコピー済みなのでClaudeのチャットに貼り付けるだけでOK。送り先はいつものCoworkの会話です。※自動送信はされません。個人情報は書かないでください。</p>
       </form>
     </div>
   </section>
 
   <!-- 保存・読み込み(共通) -->
   <details class="io">
-    <summary>💾 データの保存・読み込み(重要: 画面を閉じる前に保存を)</summary>
+    <summary>💾 DATI — データの保存・読み込み(重要: 画面を閉じる前に保存を)</summary>
     <div class="io-body">
       <p class="notice" id="storageNotice"></p>
       <div class="io-buttons">
@@ -1293,22 +1295,19 @@
   $('reqShare').addEventListener('click', async () => {
     const text = composeRequest();
     if (!text) return;
+    // 1タップで「コピー」と「共有シート」を同時に実行
+    let copied = false;
+    try { await navigator.clipboard.writeText(text); copied = true; } catch (_) {}
     if (navigator.share) {
       try {
         await navigator.share({ text });
-        reqDone('共有シートを開きました。Claudeアプリを選んで送信してください。');
+        reqDone('✓ 送信画面を開きました' + (copied ? '(コピーも完了済み)' : '') + '。Claudeアプリを選んでください。');
         $('reqText').value = '';
-      } catch (_) { /* キャンセルは無視 */ }
-    } else {
-      try { await navigator.clipboard.writeText(text); reqDone('この環境では共有が使えないためコピーしました。Claudeのチャットに貼り付けてください。'); }
-      catch (_) { reqDone('コピーできませんでした。「コピーする」をお試しください。'); }
+        return;
+      } catch (_) { /* キャンセル時はコピー済み状態を案内 */ }
     }
-  });
-  $('reqCopy').addEventListener('click', async () => {
-    const text = composeRequest();
-    if (!text) return;
-    try { await navigator.clipboard.writeText(text); reqDone('✓ コピーしました。Claudeのチャットに貼り付けて送ってください。'); }
-    catch (_) {
+    if (copied) { reqDone('✓ コピーしました。Claudeのチャットに貼り付けて送ってください。'); }
+    else {
       $('reqText').value = text;
       $('reqText').select();
       reqDone('全文を選択しました。そのままコピーしてください。');
