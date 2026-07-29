@@ -512,6 +512,20 @@
   }
   .notice { font-size: 12px; color: var(--ink-muted); }
   .hidden { display: none !important; }
+  a.btn-link {
+    display: inline-block;
+    font-size: 14px; font-weight: 800;
+    transform: skewX(-10deg);
+    padding: 10px 18px;
+    border: 1px solid var(--line);
+    background: var(--panel-solid);
+    color: var(--ink);
+    text-decoration: none;
+    letter-spacing: 0.05em;
+    text-align: center;
+  }
+  a.btn-link > span { display: inline-block; transform: skewX(10deg); }
+  a.btn-link:hover { border-color: var(--cyan); box-shadow: 0 0 10px rgba(47,196,255,0.3); }
 
   /* ===== PINロック ===== */
   .lock-overlay {
@@ -849,8 +863,9 @@
         </select>
         <textarea id="reqText" rows="5" placeholder="変更したい点・追加してほしい機能などを自由に書いてください&#10;(例: タスクに繰り返し設定を付けてほしい)"></textarea>
         <button type="button" class="primary" id="reqShare"><span>📤 送信(コピー+共有を同時実行)</span></button>
+        <a class="btn-link" href="https://claude.ai/code/session_016GApYVi6fXnvTpZj3g5zuK" target="_blank" rel="noopener"><span>🔗 いつものCowork会話を開く</span></a>
         <div class="notice" id="reqMsg"></div>
-        <p class="notice">ボタン1つで<b>クリップボードへのコピーと共有シートの表示を同時に</b>行います。共有シートで<b>Claudeアプリ</b>を選べばそのまま送れますし、選べなくてもコピー済みなのでClaudeのチャットに貼り付けるだけでOK。送り先はいつものCoworkの会話です。※自動送信はされません。個人情報は書かないでください。</p>
+        <p class="notice">流れ: ①「📤送信」でコピー → ②「🔗いつもの会話を開く」でClaudeへ → ③貼り付けて送信。リンクはあなたのアカウントでログインしている場合のみ開けます(他人は開けません)。リンクがうまく開かない場合は、Claudeアプリの履歴からCAMMINOの会話を開いて貼り付けてください。※自動送信はされません。個人情報は書かないでください。</p>
       </form>
     </div>
   </section>
