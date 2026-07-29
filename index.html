@@ -335,6 +335,8 @@
   }
   button.primary:hover { box-shadow: 0 0 16px var(--cyan-glow); }
   button.ghost { border: none; background: none; padding: 8px 10px; min-height: 40px; min-width: 40px; color: var(--ink-muted); }
+  button.danger { border-color: rgba(255,77,94,0.5); color: var(--red); }
+  button.danger:hover { border-color: var(--red); box-shadow: 0 0 10px rgba(255,77,94,0.35); }
   button.ghost:hover { color: var(--ink); box-shadow: none; }
 
   .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -565,10 +567,32 @@
     0%   { transform: perspective(1200px) rotateY(0deg); opacity: 1; }
     100% { transform: perspective(1200px) rotateY(-100deg); opacity: 0; }
   }
-  .lock-overlay.fading { animation: cover-fade 0.6s ease forwards; }
+  .lock-overlay.fading { animation: cover-fade 0.7s ease forwards; }
   @keyframes cover-fade {
     0%   { opacity: 1; }
     100% { opacity: 0; }
+  }
+  /* 解錠の儀式: 暗転 → 三日月エンブレムが静かに浮かび上がる */
+  .lock-overlay { transition: background 0.45s ease; }
+  .lock-overlay.ceremony {
+    background: #07090d;
+  }
+  .lock-overlay.ceremony .lock-box { opacity: 0; transition: opacity 0.35s ease; }
+  #unlockEmblem {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none;
+  }
+  .lock-overlay.ceremony #unlockEmblem {
+    animation: emblem-in 1.3s ease 0.25s forwards;
+  }
+  #unlockEmblem svg {
+    width: 130px; height: 130px;
+    filter: drop-shadow(0 0 18px rgba(120,200,255,0.28));
+  }
+  @keyframes emblem-in {
+    0%   { opacity: 0; transform: scale(0.95); }
+    100% { opacity: 1; transform: scale(1); }
   }
   .lock-box .lock-logo {
     font-size: 22px; font-weight: 900; font-style: italic;
@@ -662,6 +686,13 @@
     <button class="primary" id="lockBtn"><span>解除</span></button>
     <br>
     <button class="lock-forgot hidden" id="lockForgot">PINを忘れた(データを消去して初期化)</button>
+  </div>
+  <div id="unlockEmblem" aria-hidden="true">
+    <svg viewBox="0 0 512 512">
+      <path d="M 310 96 A 160 160 0 1 0 310 416 A 132 160 0 1 1 310 96 Z" fill="#c9d6e4"/>
+      <path d="M340 140 l12 32 32 12 -32 12 -12 32 -12 -32 -32 -12 32 -12 z" fill="#e3d9ad"/>
+      <path d="M370 230 l7 18 18 7 -18 7 -7 18 -7 -18 -18 -7 18 -7 z" fill="#e3d9ad" opacity="0.8"/>
+    </svg>
   </div>
 </div>
 
@@ -841,14 +872,23 @@
       <div class="empty hidden" id="sessEmpty">まだ記録がありません。上のタイマーか手動入力からどうぞ。</div>
       <div class="sort-row" style="margin-top:10px">
         <label class="small">1日のノルマ <input type="number" id="normInput" min="10" max="720" style="width:80px"> 分</label>
-        <span class="spacer"></span>
-        <label class="small"><input type="checkbox" id="wasteOn"> 浪費ログを使う</label>
       </div>
-      <div id="wastePanel" class="form-stack hidden" style="margin-top:8px">
+    </div>
+
+    <div class="panel" style="border-left-color: var(--red);">
+      <div class="panel-title" style="color: var(--red);">PIGRIZIA<span class="jp">堕落の記録 — マイナス査定</span></div>
+      <div class="form-stack">
         <div class="grid-2">
-          <input type="number" id="wMin" min="1" max="720" placeholder="浪費した分数(ゲーム等)">
-          <button id="wAdd"><span>正直に記録</span></button>
+          <select id="wKind">
+            <option>ゲーム</option>
+            <option>ネット・SNS</option>
+            <option>動画・テレビ</option>
+            <option>その他の浪費</option>
+          </select>
+          <input type="number" id="wMin" min="1" max="720" placeholder="分数">
         </div>
+        <button id="wAdd" class="danger"><span>⚔ 正直に記録する(30分ごとに査定−1)</span></button>
+        <div class="notice" id="wMsg"></div>
         <div class="notice" id="wRatio"></div>
       </div>
     </div>
@@ -1214,16 +1254,19 @@
     const v = Math.floor(Number($('normInput').value));
     if (v >= 10 && v <= 720) { settings.norm = v; renderDiario(); renderReward(); saveData(); }
   });
-  $('wasteOn').addEventListener('change', () => {
-    settings.wasteLog = $('wasteOn').checked;
-    renderDiario(); saveData();
-  });
   $('wAdd').addEventListener('click', () => {
     const min = Math.floor(Number($('wMin').value));
     if (!min || min < 1) { $('wMin').focus(); return; }
-    wasted.push({ date: todayStr(), min: Math.min(min, 720) });
+    const before = rewardUnits();
+    wasted.push({ date: todayStr(), min: Math.min(min, 720), kind: $('wKind').value });
+    const after = rewardUnits();
     $('wMin').value = '';
-    renderDiario(); saveData();
+    $('wMsg').textContent = after < before
+      ? '⚔ 査定 ' + (after - before) + ' — 達成カウントから差し引きました(現在 ' + after + ')'
+      : '記録しました(累計堕落 ' + fmtHM(totalWasteMin()) + ')。30分ごとに査定−1されます。';
+    renderTodo(); // 星表示の更新
+    renderDiario();
+    saveData();
   });
 
   // 履歴の削除
@@ -1310,15 +1353,15 @@
 
     // 設定欄
     $('normInput').value = settings.norm;
-    $('wasteOn').checked = settings.wasteLog;
-    $('wastePanel').classList.toggle('hidden', !settings.wasteLog);
-    if (settings.wasteLog) {
-      const w7 = wasted.filter(w => days.includes(w.date)).reduce((a, w) => a + w.min, 0);
-      $('wRatio').textContent = w7 || wkTotal
-        ? '直近7日 — 学習 ' + fmtHM(wkTotal) + ' : 浪費 ' + fmtHM(w7) +
-          (wkTotal + w7 > 0 ? '(学習率 ' + Math.round(wkTotal / (wkTotal + w7) * 100) + '%)' : '')
-        : 'まだ記録がありません。';
-    }
+
+    // 堕落(直近7日の比率)
+    const w7 = wasted.filter(w => days.includes(w.date)).reduce((a, w) => a + w.min, 0);
+    const wToday = wasted.filter(w => w.date === todayStr()).reduce((a, w) => a + w.min, 0);
+    $('wRatio').textContent = w7 || wkTotal
+      ? '直近7日 — 学習 ' + fmtHM(wkTotal) + ' : 堕落 ' + fmtHM(w7) +
+        (wkTotal + w7 > 0 ? '(学習率 ' + Math.round(wkTotal / (wkTotal + w7) * 100) + '%)' : '') +
+        (wToday ? ' / 今日の堕落 ' + fmtHM(wToday) : '')
+      : 'まだ記録がありません。ゲームやネットをだらだら見てしまったら、ここで正直に記録を。';
   }
 
   // ====== 改善リクエスト ======
@@ -1437,14 +1480,17 @@
   }
 
   // ====== ご褒美(星)表示 ======
-  // 達成カウント = タスク完了数 + 学習30分ごとに1
-  function rewardUnits() { return stats.totalDone + Math.floor(totalStudyMin() / 30); }
+  // 達成カウント = タスク完了数 + 学習30分ごとに1 − 堕落30分ごとに1
+  function totalWasteMin() { return wasted.reduce((a, w) => a + w.min, 0); }
+  function rewardUnits() { return stats.totalDone + Math.floor(totalStudyMin() / 30) - Math.floor(totalWasteMin() / 30); }
   function renderReward() {
     const units = rewardUnits();
-    const stars = Math.floor(units / 5);
-    const toNext = 5 - (units % 5);
+    const stars = Math.max(0, Math.floor(units / 5));
+    const toNext = units < 0 ? 5 - units : 5 - (units % 5);
     const el = $('rewardStars');
-    if (stars <= 0) {
+    if (units < 0) {
+      el.innerHTML = '<span class="none" style="color:var(--red)">⚠ 堕落が学習を上回っています(' + units + ')。学びで取り返そう</span>';
+    } else if (stars <= 0) {
       el.innerHTML = '<span class="none">タスク完了や学習30分で達成カウント+1。5つで星が輝きます</span>';
     } else if (stars <= 10) {
       el.textContent = '★'.repeat(stars);
@@ -1452,9 +1498,10 @@
       el.textContent = '★ × ' + stars;
     }
     const st = streak();
-    $('rewardNext').textContent = '達成 ' + units + '(タスク' + stats.totalDone + '+学習' + Math.floor(totalStudyMin() / 30) + ') / 次の星まで' + toNext +
+    const wasteU = Math.floor(totalWasteMin() / 30);
+    $('rewardNext').textContent = '達成 ' + units + '(タスク' + stats.totalDone + '+学習' + Math.floor(totalStudyMin() / 30) + (wasteU ? '−堕落' + wasteU : '') + ') / 次の星まで' + toNext +
       ' / ⚔連続' + st + '日 / 今日' + dayTotal(todayStr()) + '/' + settings.norm + '分' + (stars >= 10 ? ' 👑' : '');
-    $('medallion').textContent = stars >= 10 ? '👑' : '★';
+    $('medallion').textContent = units < 0 ? '💀' : stars >= 10 ? '👑' : '★';
   }
 
   function celebrate(starCount) {
@@ -1868,6 +1915,7 @@
     $('lockOverlay').classList.remove('hidden');
     $('lockOverlay').classList.remove('opening');
     $('lockOverlay').classList.remove('fading');
+    $('lockOverlay').classList.remove('ceremony');
     $('lockIcon').textContent = '🔒';
     $('lockIcon').classList.remove('pop');
     $('lockErr').textContent = '';
@@ -1881,23 +1929,29 @@
   }
   function hideLock() { $('lockOverlay').classList.add('hidden'); }
 
-  // 日記帳の錠前が開く演出
-  // (「視差効果を減らす」設定の端末では、回転の代わりに穏やかなフェードで再生)
+  // 解錠の儀式: 錠前が開く → 暗転して三日月エンブレムが浮かび上がる → 静かに本編へ
+  // (フェード主体の演出のため「視差効果を減らす」設定でも再生される。その場合は少し短く)
   function playUnlock() {
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const ov = $('lockOverlay');
     const icon = $('lockIcon');
     icon.textContent = '🔓';
     icon.classList.add('pop');
     $('lockMsg').textContent = 'SBLOCCATO — 解錠';
     $('lockErr').textContent = '';
-    setTimeout(() => $('lockOverlay').classList.add(reduced ? 'fading' : 'opening'), 480);
+    const tCeremony = 500;
+    const tFade = reduced ? 1700 : 2400;
+    const tEnd = reduced ? 2400 : 3150;
+    setTimeout(() => ov.classList.add('ceremony'), tCeremony);
+    setTimeout(() => ov.classList.add('fading'), tFade);
     setTimeout(() => {
       hideLock();
-      $('lockOverlay').classList.remove('opening');
-      $('lockOverlay').classList.remove('fading');
+      ov.classList.remove('ceremony');
+      ov.classList.remove('fading');
+      ov.classList.remove('opening');
       icon.textContent = '🔒';
       icon.classList.remove('pop');
-    }, 1300);
+    }, tEnd);
   }
 
   $('lockBtn').addEventListener('click', () => {
