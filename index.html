@@ -531,6 +531,26 @@
     padding: 26px 22px;
     text-align: center;
   }
+  .lock-icon { font-size: 34px; margin-bottom: 6px; }
+  .lock-icon.pop { animation: lock-pop 0.5s ease; }
+  @keyframes lock-pop {
+    0%   { transform: scale(1) rotate(0deg); }
+    40%  { transform: scale(1.5) rotate(-14deg); filter: drop-shadow(0 0 14px rgba(255,215,94,0.9)); }
+    70%  { transform: scale(1.15) rotate(7deg); }
+    100% { transform: scale(1); }
+  }
+  /* 日記帳の表紙が開くように */
+  .lock-overlay.opening {
+    transform-origin: left center;
+    animation: cover-open 0.8s ease-in forwards;
+  }
+  .lock-overlay.opening .lock-box {
+    box-shadow: 0 0 46px rgba(255,215,94,0.45);
+  }
+  @keyframes cover-open {
+    0%   { transform: perspective(1200px) rotateY(0deg); opacity: 1; }
+    100% { transform: perspective(1200px) rotateY(-100deg); opacity: 0; }
+  }
   .lock-box .lock-logo {
     font-size: 22px; font-weight: 900; font-style: italic;
     letter-spacing: 0.08em; margin-bottom: 4px;
@@ -615,6 +635,7 @@
 
 <div class="lock-overlay hidden" id="lockOverlay">
   <div class="lock-box">
+    <div class="lock-icon" id="lockIcon">🔒</div>
     <div class="lock-logo">CAM<span style="color:var(--cyan)">MINO</span></div>
     <div class="lock-msg" id="lockMsg"></div>
     <input type="tel" id="lockPin" inputmode="numeric" maxlength="4" pattern="[0-9]*" placeholder="----" autocomplete="off">
@@ -632,11 +653,11 @@
   </header>
 
   <nav class="tabs">
-    <button class="tab active" data-tab="todo"><span>MISSION</span></button>
-    <button class="tab" data-tab="study"><span>ARCHIVE</span></button>
-    <button class="tab" data-tab="quiz"><span>EXAM</span></button>
+    <button class="tab active" data-tab="todo"><span>MISSIONE</span></button>
+    <button class="tab" data-tab="study"><span>ARCHIVIO</span></button>
+    <button class="tab" data-tab="quiz"><span>ESAME</span></button>
     <button class="tab" data-tab="diario"><span>DIARIO</span></button>
-    <button class="tab" data-tab="req"><span>REQUEST</span></button>
+    <button class="tab" data-tab="req"><span>RICHIESTA</span></button>
   </nav>
 
   <!-- ============ TODO タブ ============ -->
@@ -1825,6 +1846,9 @@
   function showLock(mode) {
     lockMode = mode;
     $('lockOverlay').classList.remove('hidden');
+    $('lockOverlay').classList.remove('opening');
+    $('lockIcon').textContent = '🔒';
+    $('lockIcon').classList.remove('pop');
     $('lockErr').textContent = '';
     $('lockPin').value = '';
     $('lockForgot').classList.toggle('hidden', mode !== 'unlock');
@@ -1836,12 +1860,32 @@
   }
   function hideLock() { $('lockOverlay').classList.add('hidden'); }
 
+  // 日記帳の錠前が開く演出
+  function playUnlock() {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { hideLock(); return; }
+    const icon = $('lockIcon');
+    icon.textContent = '🔓';
+    icon.classList.add('pop');
+    $('lockMsg').textContent = 'SBLOCCATO — 解錠';
+    $('lockErr').textContent = '';
+    setTimeout(() => $('lockOverlay').classList.add('opening'), 480);
+    setTimeout(() => {
+      hideLock();
+      $('lockOverlay').classList.remove('opening');
+      icon.textContent = '🔒';
+      icon.classList.remove('pop');
+    }, 1300);
+  }
+
   $('lockBtn').addEventListener('click', () => {
     const v = $('lockPin').value.trim();
     if (!/^\d{4}$/.test(v)) { $('lockErr').textContent = '数字4桁で入力してください'; return; }
     if (lockMode === 'unlock') {
-      if (hashPin(v) === getPin()) hideLock();
+      if (hashPin(v) === getPin()) playUnlock();
       else { $('lockErr').textContent = 'PINが違います'; $('lockPin').value = ''; }
+    } else if (lockMode === 'setup') {
+      setPin(hashPin(v));
+      playUnlock();
     } else {
       setPin(hashPin(v));
       hideLock();
