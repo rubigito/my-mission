@@ -140,6 +140,36 @@
   .reward-stars .none { color: var(--ink-muted); text-shadow: none; font-size: 13px; letter-spacing: 0.05em; font-style: italic; }
   .reward-next { font-size: 11.5px; color: var(--ink-sub); }
 
+  /* ===== DIARIO(学習記録) ===== */
+  .timer-row { display: flex; gap: 12px; align-items: center; }
+  .timer-display {
+    flex: 1;
+    font-size: 30px; font-weight: 900; font-style: italic;
+    letter-spacing: 0.08em; color: var(--cyan);
+    text-shadow: 0 0 12px rgba(47,196,255,0.35);
+    font-variant-numeric: tabular-nums;
+  }
+  .after-form { margin-top: 12px; border-top: 1px dashed var(--line); padding-top: 12px; display: grid; gap: 8px; }
+  .wk-head { display: flex; align-items: center; gap: 10px; }
+  .wk-rank {
+    font-size: 38px; font-weight: 900; font-style: italic;
+    color: var(--cyan); text-shadow: 0 0 14px var(--cyan-glow);
+    min-width: 44px; text-align: center;
+  }
+  .wk-summary { font-size: 12.5px; color: var(--ink-sub); }
+  .wk-chart { display: flex; align-items: flex-end; gap: 6px; height: 110px; margin: 12px 0 6px; }
+  .wk-col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 3px; height: 100%; }
+  .wk-val { font-size: 10px; color: var(--ink-sub); font-variant-numeric: tabular-nums; }
+  .wk-bar { width: 100%; background: linear-gradient(180deg, var(--cyan), var(--cyan-deep)); min-height: 2px; }
+  .wk-bar.zero { background: rgba(63,169,245,0.15); }
+  .wk-bar.norm { box-shadow: 0 0 8px var(--cyan-glow); }
+  .wk-day { font-size: 10px; color: var(--ink-muted); letter-spacing: 0.1em; }
+  .wk-col.today .wk-day { color: var(--cyan); font-weight: 700; }
+  .mat-totals { font-size: 12.5px; color: var(--ink-sub); display: grid; gap: 3px; margin-top: 8px; }
+  .norm-done .bar-fill { background: linear-gradient(90deg, #c98a1e, #ffd75e); box-shadow: 0 0 12px rgba(255,215,94,0.5); }
+  .streak-label { font-size: 12px; color: var(--ink-sub); letter-spacing: 0.05em; }
+  .streak-label b { color: var(--amber); font-style: italic; }
+
   /* 星獲得の祝福演出 */
   #celebrate {
     position: fixed; inset: 0; z-index: 300;
@@ -289,7 +319,7 @@
     .wrap { padding-left: calc(10px + env(safe-area-inset-left)); padding-right: calc(10px + env(safe-area-inset-right)); }
     .logo { font-size: 22px; }
     .tabs { gap: 6px; }
-    .tab { flex: 1; padding: 10px 4px; font-size: 11.5px; letter-spacing: 0.06em; text-align: center; }
+    .tab { flex: 1; padding: 9px 2px; font-size: 10.5px; letter-spacing: 0.03em; text-align: center; }
     .panel { padding: 12px 12px; }
     .grid-3a { grid-template-columns: 1fr 1fr; }
     .grid-3a button[type="submit"] { grid-column: 1 / -1; } /* 追加ボタンは全幅で押しやすく */
@@ -578,6 +608,7 @@
     <button class="tab active" data-tab="todo"><span>MISSION</span></button>
     <button class="tab" data-tab="study"><span>ARCHIVE</span></button>
     <button class="tab" data-tab="quiz"><span>EXAM</span></button>
+    <button class="tab" data-tab="diario"><span>DIARIO</span></button>
     <button class="tab" data-tab="req"><span>REQUEST</span></button>
   </nav>
 
@@ -662,6 +693,76 @@
     </div>
   </section>
 
+  <!-- ============ DIARIO(学習記録)タブ ============ -->
+  <section id="tab-diario" class="hidden">
+    <div class="panel" id="normaPanel">
+      <div class="panel-title">今日のあゆみ</div>
+      <div class="progress-row">
+        <div class="progress-nums">
+          <div class="big"><span id="todayMin">0</span><small> / <span id="normVal">120</span>分</small></div>
+          <div class="sub">OGGI(今日)</div>
+        </div>
+        <div class="bar-track"><div class="bar-fill" id="normFill"></div></div>
+        <div class="progress-pct" id="normPct">0%</div>
+      </div>
+      <div class="streak-label" id="streakLabel" style="margin-top:8px"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">学習・訓練を記録</div>
+      <div class="form-stack">
+        <input type="text" id="dMat" list="matList" placeholder="教材・内容(例: 問題集A、ピアノ)" autocomplete="off">
+        <datalist id="matList"></datalist>
+        <div class="timer-row">
+          <div class="timer-display" id="timerDisp">00:00:00</div>
+          <button class="primary" id="timerBtn"><span>▶ 開始</span></button>
+        </div>
+        <div class="grid-2">
+          <input type="number" id="dMin" min="1" max="720" placeholder="分数を手動入力">
+          <button id="dManualAdd"><span>＋ 手動で記録</span></button>
+        </div>
+        <div class="notice" id="dMsg"></div>
+      </div>
+      <div id="afterForm" class="after-form hidden">
+        <div class="notice" id="afterInfo"></div>
+        <div class="panel-title" style="margin-bottom:0">今回学んだことは?</div>
+        <textarea id="afterMemo" rows="2" placeholder="学び・気づきを一言(ARCHIVEに保存されます)"></textarea>
+        <div class="grid-2">
+          <button class="primary" id="afterSave"><span>学びを保存</span></button>
+          <button id="afterSkip"><span>今回は記録しない</span></button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">週間成績</div>
+      <div class="wk-head">
+        <span class="wk-rank" id="wkRank">-</span>
+        <span class="wk-summary" id="wkSummary"></span>
+      </div>
+      <div class="wk-chart" id="wkChart"></div>
+      <div class="mat-totals" id="matTotals"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">記録の履歴</div>
+      <ul class="cards" id="sessList"></ul>
+      <div class="empty hidden" id="sessEmpty">まだ記録がありません。上のタイマーか手動入力からどうぞ。</div>
+      <div class="sort-row" style="margin-top:10px">
+        <label class="small">1日のノルマ <input type="number" id="normInput" min="10" max="720" style="width:80px"> 分</label>
+        <span class="spacer"></span>
+        <label class="small"><input type="checkbox" id="wasteOn"> 浪費ログを使う</label>
+      </div>
+      <div id="wastePanel" class="form-stack hidden" style="margin-top:8px">
+        <div class="grid-2">
+          <input type="number" id="wMin" min="1" max="720" placeholder="浪費した分数(ゲーム等)">
+          <button id="wAdd"><span>正直に記録</span></button>
+        </div>
+        <div class="notice" id="wRatio"></div>
+      </div>
+    </div>
+  </section>
+
   <!-- ============ リクエスト タブ ============ -->
   <section id="tab-req" class="hidden">
     <div class="panel">
@@ -720,8 +821,13 @@
     { id: 3, q: '(例)Gitのバージョン確認コマンドは?', a: 'git --version', memo: '', tag: 'Git', right: 0, wrong: 0, added: 3 },
     { id: 4, q: '(例)Gitを入れると何ができる?', a: '変更履歴の記録と巻き戻し', memo: 'AIに編集を任せるときの安全網になる。', tag: 'Git', right: 0, wrong: 0, added: 4 }
   ];
-  let nextId = 3, nextSid = 5;
+  let nextId = 3, nextSid = 5, nextSess = 1;
   let stats = { totalDone: 0 }; // 累計完了数(ご褒美システム用)
+  let sessions = [];            // 学習記録 {id, date, mat, min, added}
+  let wasted = [];              // 浪費記録 {date, min}
+  let settings = { norm: 120, wasteLog: false };
+  let timer = { running: false, startTs: 0, mat: '' };
+  let pendingMat = null;        // セッション終了後の学び記録用
   let filterCat = 'all', filterTag = 'all';
   let editingId = null, editingSid = null;
   let stockPromptId = null; // 完了直後に「学びをストックする?」を出すタスク
@@ -741,7 +847,7 @@
   function saveData() {
     if (!storageOK) return;
     try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ tasks, study, nextId, nextSid, stats }));
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ tasks, study, nextId, nextSid, stats, sessions, wasted, settings, nextSess, timer }));
     } catch (_) { /* 容量超過等は無視(手動保存は常に可能) */ }
   }
   function loadData() {
@@ -756,6 +862,11 @@
       nextSid = Number(p.nextSid) || (Math.max(0, ...study.map(s => s.id)) + 1);
       if (p.stats && typeof p.stats.totalDone === 'number') stats.totalDone = p.stats.totalDone;
       else stats.totalDone = tasks.filter(t => t.done).length; // 旧データからの引き継ぎ
+      if (Array.isArray(p.sessions)) sessions = p.sessions;
+      if (Array.isArray(p.wasted)) wasted = p.wasted;
+      if (p.settings) settings = { norm: Number(p.settings.norm) || 120, wasteLog: !!p.settings.wasteLog };
+      nextSess = Number(p.nextSess) || (Math.max(0, ...sessions.map(s => s.id)) + 1);
+      if (p.timer && p.timer.running && p.timer.startTs) timer = p.timer; // 計測中に閉じても再開
       return true;
     } catch (_) { return false; }
   }
@@ -798,9 +909,216 @@
   // ====== タブ ======
   document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => {
     document.querySelectorAll('.tab').forEach(x => x.classList.toggle('active', x === b));
-    ['todo', 'study', 'quiz', 'req'].forEach(t => $('tab-' + t).classList.toggle('hidden', t !== b.dataset.tab));
+    ['todo', 'study', 'quiz', 'diario', 'req'].forEach(t => $('tab-' + t).classList.toggle('hidden', t !== b.dataset.tab));
     if (b.dataset.tab === 'quiz' && !quizState.running) renderQuizSetup();
+    if (b.dataset.tab === 'diario') renderDiario();
   }));
+
+  // ====== DIARIO(学習記録) ======
+  function totalStudyMin() { return sessions.reduce((a, s) => a + s.min, 0); }
+  function dayTotal(dateStr) { return sessions.filter(s => s.date === dateStr).reduce((a, s) => a + s.min, 0); }
+  function dateStrOffset(offset) {
+    const d = new Date();
+    d.setDate(d.getDate() + offset);
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+  function streak() {
+    // 今日達成済みなら今日から、未達なら昨日からさかのぼって連続達成日数を数える
+    let n = 0, offset = dayTotal(todayStr()) >= settings.norm ? 0 : -1;
+    while (dayTotal(dateStrOffset(offset)) >= settings.norm) { n++; offset--; if (n > 3650) break; }
+    return n;
+  }
+  function fmtHM(min) {
+    const h = Math.floor(min / 60), m = min % 60;
+    return h ? h + '時間' + (m ? m + '分' : '') : m + '分';
+  }
+  function fmtHMS(sec) {
+    const h = String(Math.floor(sec / 3600)).padStart(2, '0');
+    const m = String(Math.floor(sec % 3600 / 60)).padStart(2, '0');
+    const s = String(Math.floor(sec % 60)).padStart(2, '0');
+    return h + ':' + m + ':' + s;
+  }
+
+  function addSession(mat, min) {
+    const before = rewardUnits();
+    sessions.push({ id: nextSess++, date: todayStr(), mat: mat, min: min, added: Date.now() });
+    pendingMat = mat;
+    $('afterInfo').textContent = '「' + mat + '」を ' + min + '分 記録しました。';
+    $('afterMemo').value = '';
+    $('afterForm').classList.remove('hidden');
+    renderDiario();
+    renderReward();
+    saveData();
+    const after = rewardUnits();
+    if (Math.floor(after / 5) > Math.floor(before / 5)) celebrate(Math.floor(after / 5));
+    $('afterMemo').focus();
+  }
+
+  // タイマー
+  let timerInterval = null;
+  function updateTimerUI() {
+    if (timer.running) {
+      $('timerDisp').textContent = fmtHMS((Date.now() - timer.startTs) / 1000);
+      $('timerBtn').querySelector('span').textContent = '■ 終了して記録';
+    } else {
+      $('timerDisp').textContent = '00:00:00';
+      $('timerBtn').querySelector('span').textContent = '▶ 開始';
+    }
+  }
+  function startTimerLoop() {
+    if (timerInterval) clearInterval(timerInterval);
+    timerInterval = setInterval(updateTimerUI, 1000);
+  }
+  $('timerBtn').addEventListener('click', () => {
+    if (!timer.running) {
+      const mat = $('dMat').value.trim();
+      if (!mat) { $('dMsg').textContent = '先に「教材・内容」を入力してください。'; $('dMat').focus(); return; }
+      $('dMsg').textContent = '';
+      timer = { running: true, startTs: Date.now(), mat: mat };
+      startTimerLoop();
+      updateTimerUI();
+      saveData();
+    } else {
+      const min = Math.round((Date.now() - timer.startTs) / 60000);
+      const mat = timer.mat;
+      timer = { running: false, startTs: 0, mat: '' };
+      clearInterval(timerInterval); timerInterval = null;
+      updateTimerUI();
+      if (min < 1) { $('dMsg').textContent = '1分未満だったため記録しませんでした。'; saveData(); renderDiario(); return; }
+      addSession(mat, Math.min(min, 720));
+    }
+  });
+
+  // 手動入力
+  $('dManualAdd').addEventListener('click', () => {
+    const mat = $('dMat').value.trim();
+    const min = Math.floor(Number($('dMin').value));
+    if (!mat) { $('dMsg').textContent = '「教材・内容」を入力してください。'; $('dMat').focus(); return; }
+    if (!min || min < 1) { $('dMsg').textContent = '分数を入力してください。'; $('dMin').focus(); return; }
+    $('dMsg').textContent = '';
+    $('dMin').value = '';
+    addSession(mat, Math.min(min, 720));
+  });
+
+  // 学びの記録(ARCHIVEへ)
+  $('afterSave').addEventListener('click', () => {
+    const memo = $('afterMemo').value.trim();
+    if (!memo) { $('afterMemo').focus(); return; }
+    study.push({ id: nextSid++, q: '', a: '', memo: memo, tag: pendingMat || '', right: 0, wrong: 0, added: Date.now() });
+    $('afterForm').classList.add('hidden');
+    pendingMat = null;
+    renderStudy();
+  });
+  $('afterSkip').addEventListener('click', () => {
+    $('afterForm').classList.add('hidden');
+    pendingMat = null;
+  });
+
+  // 設定・浪費ログ
+  $('normInput').addEventListener('change', () => {
+    const v = Math.floor(Number($('normInput').value));
+    if (v >= 10 && v <= 720) { settings.norm = v; renderDiario(); renderReward(); saveData(); }
+  });
+  $('wasteOn').addEventListener('change', () => {
+    settings.wasteLog = $('wasteOn').checked;
+    renderDiario(); saveData();
+  });
+  $('wAdd').addEventListener('click', () => {
+    const min = Math.floor(Number($('wMin').value));
+    if (!min || min < 1) { $('wMin').focus(); return; }
+    wasted.push({ date: todayStr(), min: Math.min(min, 720) });
+    $('wMin').value = '';
+    renderDiario(); saveData();
+  });
+
+  // 履歴の削除
+  $('sessList').addEventListener('click', e => {
+    const act = e.target.closest('[data-act="del"]');
+    if (!act) return;
+    const li = e.target.closest('li.card');
+    const id = Number(li.dataset.sess);
+    sessions = sessions.filter(s => s.id !== id);
+    renderDiario(); renderReward(); saveData();
+  });
+
+  function renderDiario() {
+    // 今日のノルマ
+    const today = dayTotal(todayStr());
+    const pct = Math.min(100, Math.round(today / settings.norm * 100));
+    $('todayMin').textContent = today;
+    $('normVal').textContent = settings.norm;
+    $('normFill').style.width = pct + '%';
+    $('normPct').textContent = pct + '%';
+    $('normaPanel').classList.toggle('norm-done', today >= settings.norm);
+    const st = streak();
+    $('streakLabel').innerHTML = '⚔ 連続達成 <b>' + st + '日</b>' +
+      (today >= settings.norm ? ' — 今日のノルマ達成!' : ' — 今日はあと' + Math.max(0, settings.norm - today) + '分');
+
+    // 教材候補
+    const mats = [...new Set(sessions.slice().reverse().map(s => s.mat))].slice(0, 12);
+    $('matList').innerHTML = mats.map(m => '<option value="' + esc(m) + '"></option>').join('');
+
+    // 週間グラフ(直近7日)
+    const days = [];
+    for (let i = 6; i >= 0; i--) days.push(dateStrOffset(-i));
+    const vals = days.map(d => dayTotal(d));
+    const max = Math.max(settings.norm, ...vals, 1);
+    const youbiJa = ['日', '月', '火', '水', '木', '金', '土'];
+    $('wkChart').innerHTML = days.map((d, i) => {
+      const h = Math.round(vals[i] / max * 84);
+      const dw = new Date(d + 'T00:00:00').getDay();
+      return '<div class="wk-col' + (i === 6 ? ' today' : '') + '">' +
+        '<span class="wk-val">' + (vals[i] ? vals[i] : '') + '</span>' +
+        '<div class="wk-bar' + (vals[i] ? '' : ' zero') + (vals[i] >= settings.norm ? ' norm' : '') + '" style="height:' + Math.max(2, h) + 'px"></div>' +
+        '<span class="wk-day">' + youbiJa[dw] + '</span>' +
+      '</div>';
+    }).join('');
+
+    // 週間ランク: ノルマ達成日数で判定
+    const achieved = vals.filter(v => v >= settings.norm).length;
+    const rank = achieved >= 7 ? 'S' : achieved >= 5 ? 'A' : achieved >= 3 ? 'B' : achieved >= 1 ? 'C' : 'D';
+    $('wkRank').textContent = rank;
+    const wkTotal = vals.reduce((a, b) => a + b, 0);
+    const tries = study.reduce((a, s) => a + s.right + s.wrong, 0);
+    const rights = study.reduce((a, s) => a + s.right, 0);
+    $('wkSummary').textContent = '7日間 ' + fmtHM(wkTotal) + ' / ノルマ達成 ' + achieved + '日' +
+      (tries ? ' / EXAM正答率 ' + Math.round(rights / tries * 100) + '%' : '');
+
+    // 教材別累計(上位5)
+    const agg = {};
+    sessions.forEach(s => { agg[s.mat] = (agg[s.mat] || 0) + s.min; });
+    const top = Object.entries(agg).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    $('matTotals').innerHTML = top.length
+      ? '<div style="color:var(--ink-muted);font-size:11px;letter-spacing:0.1em;">累計(教材別)</div>' +
+        top.map(([m, v]) => '▸ ' + esc(m) + ' — ' + fmtHM(v)).join('<br>')
+      : '';
+
+    // 履歴(最新20件)
+    const recent = sessions.slice().sort((a, b) => b.added - a.added);
+    const shown = recent.slice(0, 20);
+    $('sessList').innerHTML = shown.map(s =>
+      '<li class="card" data-sess="' + s.id + '">' +
+        '<div class="t-body">' +
+          '<div class="t-title">' + esc(s.mat) + ' — ' + s.min + '分</div>' +
+          '<div class="t-meta"><span class="badge"><span>' + s.date.slice(5).replace('-', '/') + '</span></span></div>' +
+        '</div>' +
+        '<div class="t-actions"><button class="ghost" data-act="del" title="削除"><span>🗑️</span></button></div>' +
+      '</li>').join('') +
+      (recent.length > 20 ? '<div class="notice">他 ' + (recent.length - 20) + ' 件(データはすべて保存されています)</div>' : '');
+    $('sessEmpty').classList.toggle('hidden', !!sessions.length);
+
+    // 設定欄
+    $('normInput').value = settings.norm;
+    $('wasteOn').checked = settings.wasteLog;
+    $('wastePanel').classList.toggle('hidden', !settings.wasteLog);
+    if (settings.wasteLog) {
+      const w7 = wasted.filter(w => days.includes(w.date)).reduce((a, w) => a + w.min, 0);
+      $('wRatio').textContent = w7 || wkTotal
+        ? '直近7日 — 学習 ' + fmtHM(wkTotal) + ' : 浪費 ' + fmtHM(w7) +
+          (wkTotal + w7 > 0 ? '(学習率 ' + Math.round(wkTotal / (wkTotal + w7) * 100) + '%)' : '')
+        : 'まだ記録がありません。';
+    }
+  }
 
   // ====== 改善リクエスト ======
   function composeRequest() {
@@ -921,18 +1239,23 @@
   }
 
   // ====== ご褒美(星)表示 ======
+  // 達成カウント = タスク完了数 + 学習30分ごとに1
+  function rewardUnits() { return stats.totalDone + Math.floor(totalStudyMin() / 30); }
   function renderReward() {
-    const stars = Math.floor(stats.totalDone / 5);
-    const toNext = 5 - (stats.totalDone % 5);
+    const units = rewardUnits();
+    const stars = Math.floor(units / 5);
+    const toNext = 5 - (units % 5);
     const el = $('rewardStars');
     if (stars <= 0) {
-      el.innerHTML = '<span class="none">タスクを5回完了すると最初の星が輝きます</span>';
+      el.innerHTML = '<span class="none">タスク完了や学習30分で達成カウント+1。5つで星が輝きます</span>';
     } else if (stars <= 10) {
       el.textContent = '★'.repeat(stars);
     } else {
       el.textContent = '★ × ' + stars;
     }
-    $('rewardNext').textContent = '累計 ' + stats.totalDone + ' 回完了 / 次の星まであと ' + toNext + ' 回' + (stars >= 10 ? ' — 👑 白亜の都の主' : '');
+    const st = streak();
+    $('rewardNext').textContent = '達成 ' + units + '(タスク' + stats.totalDone + '+学習' + Math.floor(totalStudyMin() / 30) + ') / 次の星まで' + toNext +
+      ' / ⚔連続' + st + '日 / 今日' + dayTotal(todayStr()) + '/' + settings.norm + '分' + (stars >= 10 ? ' 👑' : '');
     $('medallion').textContent = stars >= 10 ? '👑' : '★';
   }
 
@@ -963,9 +1286,9 @@
     if (e.target.classList.contains('t-check')) {
       t.done = e.target.checked;
       // ご褒美システム: 累計完了数を更新し、星が増えたら祝福演出
-      const starsBefore = Math.floor(stats.totalDone / 5);
+      const starsBefore = Math.floor(rewardUnits() / 5);
       stats.totalDone = Math.max(0, stats.totalDone + (t.done ? 1 : -1));
-      const starsAfter = Math.floor(stats.totalDone / 5);
+      const starsAfter = Math.floor(rewardUnits() / 5);
       // 完了にしたときだけ「学びをストックする?」を表示(単純作業なら「しない」でOK)
       stockPromptId = t.done ? t.id : (stockPromptId === t.id ? null : stockPromptId);
       renderTodo();
@@ -1227,7 +1550,10 @@
       version: 3,
       tasks: tasks.map(({ id, added, ...rest }) => rest),
       study: study.map(({ id, added, ...rest }) => rest),
-      stats: stats
+      stats: stats,
+      sessions: sessions.map(({ id, added, ...rest }) => rest),
+      wasted: wasted,
+      settings: settings
     }, null, 2);
   }
   function ioMsg(m) { $('ioMsg').textContent = m; setTimeout(() => { if ($('ioMsg').textContent === m) $('ioMsg').textContent = ''; }, 4000); }
@@ -1290,6 +1616,17 @@
         if (Array.isArray(p.tasks)) newTasks = p.tasks.map(normTask).filter(o => o.title);
         if (Array.isArray(p.study)) newStudy = p.study.map(normStudy).filter(o => o.q || o.a || o.memo);
         if (p.stats && typeof p.stats.totalDone === 'number' && $('importReplace').checked) stats.totalDone = Math.max(0, Math.floor(p.stats.totalDone));
+        if (Array.isArray(p.sessions)) {
+          const ns = p.sessions.map(o => ({
+            date: /^\d{4}-\d{2}-\d{2}$/.test(o.date || '') ? o.date : todayStr(),
+            mat: String(o.mat || '').trim() || '(無題)',
+            min: Math.max(1, Math.min(720, Math.floor(Number(o.min)) || 0))
+          })).filter(o => o.min >= 1);
+          if ($('importReplace').checked) sessions = [];
+          ns.forEach(o => sessions.push({ ...o, id: nextSess++, added: Date.now() + nextSess }));
+        }
+        if (Array.isArray(p.wasted) && $('importReplace').checked) wasted = p.wasted.filter(w => w && w.min > 0);
+        if (p.settings && $('importReplace').checked) settings = { norm: Number(p.settings.norm) || 120, wasteLog: !!p.settings.wasteLog };
       }
     } catch (_) {
       newTasks = raw.split('\n').map(s => s.replace(/^[-*・☐□✓✔\s]+/, '').trim()).filter(Boolean)
@@ -1300,7 +1637,7 @@
     newTasks.forEach(o => tasks.push({ ...o, id: nextId++, added: Date.now() + nextId }));
     newStudy.forEach(o => study.push({ ...o, id: nextSid++, added: Date.now() + nextSid }));
     ioMsg('タスク' + newTasks.length + '件、学びストック' + newStudy.length + '件を読み込みました。');
-    renderTodo(); renderStudy();
+    renderTodo(); renderStudy(); renderDiario();
   }
 
   // ====== PINロック ======
@@ -1390,6 +1727,9 @@
   renderTodo();
   renderStudy();
   renderQuizSetup();
+  renderDiario();
+  updateTimerUI();
+  if (timer.running) { $('dMat').value = timer.mat; startTimerLoop(); }
 })();
 </script>
 </body>
