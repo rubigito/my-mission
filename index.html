@@ -565,6 +565,11 @@
     0%   { transform: perspective(1200px) rotateY(0deg); opacity: 1; }
     100% { transform: perspective(1200px) rotateY(-100deg); opacity: 0; }
   }
+  .lock-overlay.fading { animation: cover-fade 0.6s ease forwards; }
+  @keyframes cover-fade {
+    0%   { opacity: 1; }
+    100% { opacity: 0; }
+  }
   .lock-box .lock-logo {
     font-size: 22px; font-weight: 900; font-style: italic;
     letter-spacing: 0.08em; margin-bottom: 4px;
@@ -652,7 +657,7 @@
     <div class="lock-icon" id="lockIcon">🔒</div>
     <div class="lock-logo">CAM<span style="color:var(--cyan)">MINO</span></div>
     <div class="lock-msg" id="lockMsg"></div>
-    <input type="tel" id="lockPin" inputmode="numeric" maxlength="4" pattern="[0-9]*" placeholder="----" autocomplete="off">
+    <input type="password" id="lockPin" inputmode="numeric" maxlength="4" pattern="[0-9]*" placeholder="----" autocomplete="off">
     <div class="lock-err" id="lockErr"></div>
     <button class="primary" id="lockBtn"><span>解除</span></button>
     <br>
@@ -1862,6 +1867,7 @@
     lockMode = mode;
     $('lockOverlay').classList.remove('hidden');
     $('lockOverlay').classList.remove('opening');
+    $('lockOverlay').classList.remove('fading');
     $('lockIcon').textContent = '🔒';
     $('lockIcon').classList.remove('pop');
     $('lockErr').textContent = '';
@@ -1876,17 +1882,19 @@
   function hideLock() { $('lockOverlay').classList.add('hidden'); }
 
   // 日記帳の錠前が開く演出
+  // (「視差効果を減らす」設定の端末では、回転の代わりに穏やかなフェードで再生)
   function playUnlock() {
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { hideLock(); return; }
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const icon = $('lockIcon');
     icon.textContent = '🔓';
     icon.classList.add('pop');
     $('lockMsg').textContent = 'SBLOCCATO — 解錠';
     $('lockErr').textContent = '';
-    setTimeout(() => $('lockOverlay').classList.add('opening'), 480);
+    setTimeout(() => $('lockOverlay').classList.add(reduced ? 'fading' : 'opening'), 480);
     setTimeout(() => {
       hideLock();
       $('lockOverlay').classList.remove('opening');
+      $('lockOverlay').classList.remove('fading');
       icon.textContent = '🔒';
       icon.classList.remove('pop');
     }, 1300);
