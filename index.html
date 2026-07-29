@@ -170,6 +170,28 @@
   .streak-label { font-size: 12px; color: var(--ink-sub); letter-spacing: 0.05em; }
   .streak-label b { color: var(--amber); font-style: italic; }
 
+  /* ===== RIPOSO(休息) ===== */
+  .rest-feedback {
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--cyan);
+    padding: 10px 12px;
+    display: grid; gap: 6px;
+    background: rgba(47,196,255,0.05);
+  }
+  .r-score { font-size: 16px; font-weight: 900; font-style: italic; }
+  .r-score.g1 { color: var(--good); }
+  .r-score.g2 { color: var(--cyan); }
+  .r-score.g3 { color: var(--amber); }
+  .r-score.g4 { color: var(--red); }
+  .r-note { font-size: 12px; color: var(--ink-sub); }
+  .feel-row { display: flex; gap: 6px; align-items: center; font-size: 12.5px; color: var(--ink-sub); flex-wrap: wrap; }
+  .feel-row button { padding: 4px 12px; min-height: 36px; font-size: 14px; }
+  .rest-stats { font-size: 12px; color: var(--ink-sub); display: grid; gap: 2px; margin-top: 8px; }
+  details.guide { margin-top: 8px; }
+  details.guide summary { cursor: pointer; font-size: 12.5px; color: var(--cyan); }
+  .guide-body { margin-top: 8px; display: grid; gap: 6px; font-size: 12px; color: var(--ink-sub); }
+  .guide-body b { color: var(--ink); }
+
   /* 星獲得の祝福演出 */
   #celebrate {
     position: fixed; inset: 0; z-index: 300;
@@ -735,6 +757,30 @@
     </div>
 
     <div class="panel">
+      <div class="panel-title">休息を記録 — RIPOSO</div>
+      <div class="form-stack">
+        <div class="grid-2">
+          <select id="rType"></select>
+          <input type="number" id="rMin" min="1" max="720" placeholder="分数">
+        </div>
+        <button class="primary" id="rAdd"><span>😴 休息を記録して回復度を見る</span></button>
+      </div>
+      <div id="rFeedback" class="rest-feedback hidden" style="margin-top:10px">
+        <div class="r-score" id="rScoreLine"></div>
+        <div class="r-note" id="rNote"></div>
+        <div class="feel-row" id="rFeelRow">
+          <span>実感としてどれくらい休めましたか?</span>
+          <span id="rFeelBtns"></span>
+        </div>
+      </div>
+      <div class="rest-stats" id="restStats"></div>
+      <details class="guide">
+        <summary>📖 休息ガイド — 何が本当に脳を休めるのか</summary>
+        <div class="guide-body" id="restGuide"></div>
+      </details>
+    </div>
+
+    <div class="panel">
       <div class="panel-title">週間成績</div>
       <div class="wk-head">
         <span class="wk-rank" id="wkRank">-</span>
@@ -824,6 +870,8 @@
   let nextId = 3, nextSid = 5, nextSess = 1;
   let stats = { totalDone: 0 }; // 累計完了数(ご褒美システム用)
   let sessions = [];            // 学習記録 {id, date, mat, min, added}
+  let rests = [];               // 休息記録 {id, date, type, min, score, feel, added}
+  let nextRest = 1;
   let wasted = [];              // 浪費記録 {date, min}
   let settings = { norm: 120, wasteLog: false };
   let timer = { running: false, startTs: 0, mat: '' };
@@ -847,7 +895,7 @@
   function saveData() {
     if (!storageOK) return;
     try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ tasks, study, nextId, nextSid, stats, sessions, wasted, settings, nextSess, timer }));
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ tasks, study, nextId, nextSid, stats, sessions, wasted, settings, nextSess, timer, rests, nextRest }));
     } catch (_) { /* 容量超過等は無視(手動保存は常に可能) */ }
   }
   function loadData() {
@@ -867,6 +915,8 @@
       if (p.settings) settings = { norm: Number(p.settings.norm) || 120, wasteLog: !!p.settings.wasteLog };
       nextSess = Number(p.nextSess) || (Math.max(0, ...sessions.map(s => s.id)) + 1);
       if (p.timer && p.timer.running && p.timer.startTs) timer = p.timer; // 計測中に閉じても再開
+      if (Array.isArray(p.rests)) rests = p.rests;
+      nextRest = Number(p.nextRest) || (Math.max(0, ...rests.map(r => r.id)) + 1);
       return true;
     } catch (_) { return false; }
   }
@@ -913,6 +963,108 @@
     if (b.dataset.tab === 'quiz' && !quizState.running) renderQuizSetup();
     if (b.dataset.tab === 'diario') renderDiario();
   }));
+
+  // ====== RIPOSO(休息記録) ======
+  // 回復度の基準値は睡眠科学・注意回復理論・運動と気分の研究などの一般的知見に基づく目安。
+  // (一般的な健康情報であり、医療アドバイスではありません)
+  const REST_TYPES = [
+    { key: 'nap',      label: '仮眠(10〜20分推奨)', base: 95, note: '10〜20分の仮眠は眠気と作業成績を改善することが多くの研究で示されています。30分を超えると寝起きのだるさ(睡眠慣性)が出やすいので注意。' },
+    { key: 'coffeenap',label: 'コーヒーナップ',       base: 90, note: 'カフェインを飲んでから約20分の仮眠。カフェインが効き始める頃に目覚めるため、覚醒度が高く戻れるとされています。' },
+    { key: 'walk',     label: '散歩・自然にふれる',   base: 90, note: '自然の中を歩くと注意力が回復するという研究が複数あります(注意回復理論)。緑や水辺を眺めるだけでも効果が報告されています。' },
+    { key: 'exercise', label: '軽い運動',             base: 85, note: '短時間の軽い有酸素運動は気分と認知機能を改善します。息が軽く弾む程度で十分です。' },
+    { key: 'breath',   label: '瞑想・深呼吸',         base: 85, note: 'ゆっくりした呼吸や短時間の瞑想は、ストレス反応を鎮め自律神経を整えることが示されています。5分でも効果があります。' },
+    { key: 'piano',    label: '楽器演奏(ピアノ等)', base: 80, note: '能動的な音楽活動はストレスホルモンの低下が報告されています。勉強と別の脳回路を使う「積極的休息」として優秀です。' },
+    { key: 'bath',     label: '入浴',                 base: 75, note: '温かい入浴はリラックス効果があり、就寝1〜2時間前の入浴は睡眠の質を高めることが示されています。' },
+    { key: 'idle',     label: '目を閉じてぼんやり',   base: 75, note: '静かな安静(何もしない時間)は直前に学んだことの記憶定着を助けるという研究があります。脳の整理時間です。' },
+    { key: 'stretch',  label: 'ストレッチ',           base: 70, note: '筋肉の緊張をほぐし、リラックス反応を促します。長時間の座位の合間に特に有効です。' },
+    { key: 'chat',     label: '雑談・人との会話',     base: 65, note: '良好な社会的交流はストレスを和らげます。ただし気を使う相手との会話は逆に消耗することも。' },
+    { key: 'read',     label: '読書(紙の本)',       base: 65, note: '穏やかな読書はリラックスにつながります。画面より紙のほうが刺激が少なく休息向きです。' },
+    { key: 'video',    label: '動画・テレビ',         base: 40, note: '受動的ですが視聴覚刺激が続くため、脳の休息効果は限定的です。短時間の気分転換までにとどめるのが無難。' },
+    { key: 'game',     label: 'ゲーム',               base: 25, note: '強い刺激と報酬のループで覚醒状態が続き、休息にはなりにくいことが知られています。「楽しみ」であって「回復」ではないと分けて考えるのがおすすめ。' },
+    { key: 'net',      label: 'ネット・SNS',          base: 15, note: '受動的なスクロールは注意を細切れにし、疲労感をむしろ強めるという報告があります。休息としては最も非効率な部類です。' }
+  ];
+  function restType(key) { return REST_TYPES.find(t => t.key === key) || REST_TYPES[7]; }
+  function computeRestScore(key, min) {
+    const t = restType(key);
+    let score = t.base, extra = '';
+    if ((key === 'nap' || key === 'coffeenap')) {
+      if (min > 30) { score = 60; extra = '30分を超える仮眠は睡眠慣性(寝起きのだるさ)が出やすくなります。次は20分前後で。'; }
+      else if (min < 5) { score = 70; extra = '5分未満だと効果が出にくいことがあります。10〜20分がおすすめ。'; }
+    }
+    if (key === 'game' || key === 'net' || key === 'video') {
+      if (min > 60) { score = Math.max(5, score - 20); extra = '長時間になるほど疲労が回復と逆方向に働きます。'; }
+      else if (min > 30) { score = Math.max(5, score - 10); }
+    }
+    return { score, extra };
+  }
+  function restGrade(s) {
+    if (s >= 85) return { cls: 'g1', mark: '◎', word: 'しっかり回復' };
+    if (s >= 70) return { cls: 'g2', mark: '○', word: '良い休息' };
+    if (s >= 50) return { cls: 'g3', mark: '△', word: 'まずまず' };
+    return { cls: 'g4', mark: '✕', word: '休息効果は低め' };
+  }
+
+  let pendingRestId = null;
+  $('rAdd').addEventListener('click', () => {
+    const key = $('rType').value;
+    const min = Math.floor(Number($('rMin').value));
+    if (!min || min < 1) { $('rMin').focus(); return; }
+    const { score, extra } = computeRestScore(key, Math.min(min, 720));
+    const t = restType(key);
+    const g = restGrade(score);
+    const rest = { id: nextRest++, date: todayStr(), type: key, min: Math.min(min, 720), score, feel: null, added: Date.now() };
+    rests.push(rest);
+    pendingRestId = rest.id;
+    $('rScoreLine').textContent = g.mark + ' 回復スコア ' + score + ' — ' + g.word;
+    $('rScoreLine').className = 'r-score ' + g.cls;
+    $('rNote').textContent = t.note + (extra ? ' ⚠ ' + extra : '');
+    $('rFeelRow').innerHTML = '<span>実感としてどれくらい休めましたか?</span><span>' +
+      [1,2,3,4,5].map(n => '<button data-feel="' + n + '"><span>' + n + '</span></button>').join(' ') + '</span>';
+    $('rFeedback').classList.remove('hidden');
+    $('rMin').value = '';
+    renderRestStats();
+    saveData();
+  });
+  $('rFeedback').addEventListener('click', e => {
+    const b = e.target.closest('[data-feel]');
+    if (!b || pendingRestId === null) return;
+    const r = rests.find(x => x.id === pendingRestId);
+    if (r) r.feel = Number(b.dataset.feel);
+    pendingRestId = null;
+    const t = restType(r.type);
+    const same = rests.filter(x => x.type === r.type && x.feel);
+    const avg = (same.reduce((a, x) => a + x.feel, 0) / same.length).toFixed(1);
+    $('rFeelRow').innerHTML = '✓ 記録しました。あなたの「' + t.label + '」の実感平均: ' + avg + ' / 5(' + same.length + '回)';
+    renderRestStats();
+    saveData();
+  });
+
+  function renderRestStats() {
+    // タイプ別の個人統計(記録回数順・上位5)
+    const agg = {};
+    rests.forEach(r => {
+      if (!agg[r.type]) agg[r.type] = { n: 0, min: 0, feelSum: 0, feelN: 0, scoreSum: 0 };
+      const a = agg[r.type];
+      a.n++; a.min += r.min; a.scoreSum += r.score;
+      if (r.feel) { a.feelSum += r.feel; a.feelN++; }
+    });
+    const top = Object.entries(agg).sort((a, b) => b[1].n - a[1].n).slice(0, 5);
+    $('restStats').innerHTML = top.length
+      ? '<div style="color:var(--ink-muted);font-size:11px;letter-spacing:0.1em;margin-top:4px;">あなたの休息データ</div>' +
+        top.map(([k, a]) => {
+          const t = restType(k);
+          return '▸ ' + esc(t.label) + ' — ' + a.n + '回 / ' + fmtHM(a.min) +
+            ' / スコア平均' + Math.round(a.scoreSum / a.n) +
+            (a.feelN ? ' / 実感' + (a.feelSum / a.feelN).toFixed(1) + '/5' : '');
+        }).join('<br>')
+      : '';
+  }
+
+  // 休息ガイド(全タイプの解説)
+  $('restGuide').innerHTML =
+    REST_TYPES.map(t => '<div><b>' + esc(t.label) + '(目安 ' + t.base + '点)</b><br>' + esc(t.note) + '</div>').join('') +
+    '<div style="color:var(--ink-muted)">※スコアは睡眠科学・注意回復理論などの一般的な研究知見に基づく目安で、医療アドバイスではありません。実感(1〜5)を記録していくと、あなた自身に効く休息が数字で見えてきます。</div>';
+  $('rType').innerHTML = REST_TYPES.map(t => '<option value="' + t.key + '">' + esc(t.label) + '</option>').join('');
 
   // ====== DIARIO(学習記録) ======
   function totalStudyMin() { return sessions.reduce((a, s) => a + s.min, 0); }
@@ -1081,8 +1233,12 @@
     const wkTotal = vals.reduce((a, b) => a + b, 0);
     const tries = study.reduce((a, s) => a + s.right + s.wrong, 0);
     const rights = study.reduce((a, s) => a + s.right, 0);
+    const restWk = rests.filter(r => days.includes(r.date));
+    const restWkMin = restWk.reduce((a, r) => a + r.min, 0);
+    const restWkScore = restWk.length ? Math.round(restWk.reduce((a, r) => a + r.score, 0) / restWk.length) : null;
     $('wkSummary').textContent = '7日間 ' + fmtHM(wkTotal) + ' / ノルマ達成 ' + achieved + '日' +
-      (tries ? ' / EXAM正答率 ' + Math.round(rights / tries * 100) + '%' : '');
+      (tries ? ' / EXAM正答率 ' + Math.round(rights / tries * 100) + '%' : '') +
+      (restWkMin ? ' / 休息 ' + fmtHM(restWkMin) + '(質' + restWkScore + ')' : '');
 
     // 教材別累計(上位5)
     const agg = {};
@@ -1106,6 +1262,8 @@
       '</li>').join('') +
       (recent.length > 20 ? '<div class="notice">他 ' + (recent.length - 20) + ' 件(データはすべて保存されています)</div>' : '');
     $('sessEmpty').classList.toggle('hidden', !!sessions.length);
+
+    renderRestStats();
 
     // 設定欄
     $('normInput').value = settings.norm;
@@ -1552,6 +1710,7 @@
       study: study.map(({ id, added, ...rest }) => rest),
       stats: stats,
       sessions: sessions.map(({ id, added, ...rest }) => rest),
+      rests: rests.map(({ id, added, ...rest }) => rest),
       wasted: wasted,
       settings: settings
     }, null, 2);
@@ -1624,6 +1783,17 @@
           })).filter(o => o.min >= 1);
           if ($('importReplace').checked) sessions = [];
           ns.forEach(o => sessions.push({ ...o, id: nextSess++, added: Date.now() + nextSess }));
+        }
+        if (Array.isArray(p.rests)) {
+          const nr = p.rests.map(o => ({
+            date: /^\d{4}-\d{2}-\d{2}$/.test(o.date || '') ? o.date : todayStr(),
+            type: REST_TYPES.some(t => t.key === o.type) ? o.type : 'idle',
+            min: Math.max(1, Math.min(720, Math.floor(Number(o.min)) || 0)),
+            score: Math.max(0, Math.min(100, Math.floor(Number(o.score)) || 50)),
+            feel: [1,2,3,4,5].includes(o.feel) ? o.feel : null
+          })).filter(o => o.min >= 1);
+          if ($('importReplace').checked) rests = [];
+          nr.forEach(o => rests.push({ ...o, id: nextRest++, added: Date.now() + nextRest }));
         }
         if (Array.isArray(p.wasted) && $('importReplace').checked) wasted = p.wasted.filter(w => w && w.min > 0);
         if (p.settings && $('importReplace').checked) settings = { norm: Number(p.settings.norm) || 120, wasteLog: !!p.settings.wasteLog };
