@@ -6,8 +6,10 @@
 <meta name="theme-color" content="#0d3f66">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="ATTIMO">
-<title>ATTIMO — TODO &amp; STUDY</title>
+<meta name="apple-mobile-web-app-title" content="CAMMINO">
+<title>CAMMINO — TODO &amp; STUDY</title>
+<link rel="icon" type="image/png" href="icon.png">
+<link rel="apple-touch-icon" href="icon.png">
 <style>
   :root {
     --bg-1: #050e1e;
@@ -545,7 +547,7 @@
 
 <div class="lock-overlay hidden" id="lockOverlay">
   <div class="lock-box">
-    <div class="lock-logo">AT<span style="color:var(--cyan)">TIMO</span></div>
+    <div class="lock-logo">CAM<span style="color:var(--cyan)">MINO</span></div>
     <div class="lock-msg" id="lockMsg"></div>
     <input type="tel" id="lockPin" inputmode="numeric" maxlength="4" pattern="[0-9]*" placeholder="----" autocomplete="off">
     <div class="lock-err" id="lockErr"></div>
@@ -557,7 +559,7 @@
 
 <div class="wrap">
   <header>
-    <div class="logo">AT<span class="accent">TIMO</span></div>
+    <div class="logo">CAM<span class="accent">MINO</span></div>
     <div class="date-line" id="todayLabel"></div>
   </header>
 
@@ -794,7 +796,7 @@
     const body = $('reqText').value.trim();
     if (!body) { $('reqMsg').textContent = 'リクエスト内容を入力してください。'; $('reqText').focus(); return null; }
     const d = new Date();
-    return '【ATTIMOへのリクエスト】\n' +
+    return '【CAMMINOへのリクエスト】\n' +
       '種類: ' + $('reqType').value + '\n' +
       '日付: ' + d.getFullYear() + '/' + (d.getMonth() + 1) + '/' + d.getDate() + '\n' +
       '内容:\n' + body + '\n\n' +
@@ -1223,7 +1225,7 @@
     const blob = new Blob([serialize()], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = 'attimo-' + todayStr() + '.json';
+    a.download = 'cammino-' + todayStr() + '.json';
     a.click();
     URL.revokeObjectURL(a.href);
   });
