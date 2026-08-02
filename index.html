@@ -170,6 +170,21 @@
   .streak-label { font-size: 12px; color: var(--ink-sub); letter-spacing: 0.05em; }
   .streak-label b { color: var(--amber); font-style: italic; }
 
+  /* ===== PROMEMORIA(リマインド) ===== */
+  ul.memo-list { list-style: none; margin: 0 0 10px; padding: 0; }
+  ul.memo-list:empty { margin: 0; }
+  ul.memo-list li {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 10px;
+    border-left: 3px solid #e8a4c4;
+    background: rgba(232,164,196,0.06);
+    margin-bottom: 4px;
+    font-size: 14px;
+  }
+  ul.memo-list .pm-text { flex: 1; word-break: break-word; font-weight: 600; }
+  ul.memo-list li.pm-today { border-left-color: var(--amber); background: rgba(255,194,51,0.10); }
+  ul.memo-list li.pm-over { border-left-color: var(--red); background: rgba(255,77,94,0.10); }
+
   /* ===== TRAGUARDO(目標) ===== */
   .final-goal {
     border: 1px solid rgba(255,194,51,0.4);
@@ -758,6 +773,18 @@
       </div>
     </div>
 
+    <div class="panel" style="border-left-color: var(--magenta, #e87ba4);">
+      <div class="panel-title" style="color: #e8a4c4;">PROMEMORIA<span class="jp">大事なリマインド(タスクとは別枠)</span></div>
+      <ul class="memo-list" id="memoList"></ul>
+      <div class="form-stack">
+        <input type="text" id="pmText" placeholder="忘れてはいけないこと(例: 保険の更新、◯◯さんに連絡)">
+        <div class="grid-2">
+          <input type="date" id="pmDate" title="日付(任意)">
+          <button id="pmAdd"><span>📌 とめておく</span></button>
+        </div>
+      </div>
+    </div>
+
     <div class="panel">
       <div class="panel-title">NUOVA MISSIONE<span class="jp">新しいタスク</span></div>
       <form class="form-stack" id="addForm">
@@ -1027,6 +1054,8 @@
   let pendingMat = null;        // セッション終了後の学び記録用
   let goals = { final: { text: '', due: '', done: false }, monthly: {}, weekly: {} };
   let nextGoal = 1;
+  let memos = [];               // リマインド {id, text, date, added}
+  let nextMemo = 1;
   let filterCat = 'all', filterTag = 'all';
   let editingId = null, editingSid = null;
   let stockPromptId = null; // 完了直後に「学びをストックする?」を出すタスク
@@ -1046,7 +1075,7 @@
   function saveData() {
     if (!storageOK) return;
     try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ tasks, study, nextId, nextSid, stats, sessions, wasted, settings, nextSess, timer, rests, nextRest, goals, nextGoal }));
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ tasks, study, nextId, nextSid, stats, sessions, wasted, settings, nextSess, timer, rests, nextRest, goals, nextGoal, memos, nextMemo }));
     } catch (_) { /* 容量超過等は無視(手動保存は常に可能) */ }
   }
   function loadData() {
@@ -1076,6 +1105,8 @@
         };
       }
       nextGoal = Number(p.nextGoal) || 1;
+      if (Array.isArray(p.memos)) memos = p.memos;
+      nextMemo = Number(p.nextMemo) || (Math.max(0, ...memos.map(m => m.id)) + 1);
       return true;
     } catch (_) { return false; }
   }
@@ -1122,6 +1153,39 @@
     if (b.dataset.tab === 'quiz' && !quizState.running) renderQuizSetup();
     if (b.dataset.tab === 'diario') renderDiario();
   }));
+
+  // ====== PROMEMORIA(リマインド) ======
+  function renderMemos() {
+    const sorted = memos.slice().sort((a, b) => {
+      const da = a.date || '9999-12-31', db = b.date || '9999-12-31';
+      return da < db ? -1 : da > db ? 1 : a.added - b.added;
+    });
+    $('memoList').innerHTML = sorted.map(m => {
+      const n = m.date ? daysUntil(m.date) : null;
+      const cls = n === null ? '' : n < 0 ? 'pm-over' : n === 0 ? 'pm-today' : '';
+      const due = m.date ? fmtDue(m.date) : null;
+      return '<li class="' + cls + '" data-pm="' + m.id + '">' +
+        '<span>📌</span>' +
+        '<span class="pm-text">' + esc(m.text) + '</span>' +
+        (due ? '<span class="badge ' + due.cls + '"><span>' + due.txt + '</span></span>' : '') +
+        '<button class="ghost" data-act="pmdel" title="削除"><span>🗑️</span></button>' +
+      '</li>';
+    }).join('');
+  }
+  $('pmAdd').addEventListener('click', () => {
+    const t = $('pmText').value.trim();
+    if (!t) { $('pmText').focus(); return; }
+    memos.push({ id: nextMemo++, text: t, date: $('pmDate').value || '', added: Date.now() });
+    $('pmText').value = ''; $('pmDate').value = '';
+    renderMemos(); saveData();
+  });
+  $('memoList').addEventListener('click', e => {
+    const act = e.target.closest('[data-act="pmdel"]');
+    if (!act) return;
+    const id = Number(e.target.closest('li[data-pm]').dataset.pm);
+    memos = memos.filter(m => m.id !== id);
+    renderMemos(); saveData();
+  });
 
   // ====== TRAGUARDO(目標) ======
   function monthKey() { return todayStr().slice(0, 7); }
@@ -1987,7 +2051,8 @@
       rests: rests.map(({ id, added, ...rest }) => rest),
       wasted: wasted,
       settings: settings,
-      goals: goals
+      goals: goals,
+      memos: memos.map(({ id, added, ...rest }) => rest)
     }, null, 2);
   }
   function ioMsg(m) { $('ioMsg').textContent = m; setTimeout(() => { if ($('ioMsg').textContent === m) $('ioMsg').textContent = ''; }, 4000); }
@@ -2072,6 +2137,14 @@
         }
         if (Array.isArray(p.wasted) && $('importReplace').checked) wasted = p.wasted.filter(w => w && w.min > 0);
         if (p.settings && $('importReplace').checked) settings = { norm: Number(p.settings.norm) || 120, wasteLog: !!p.settings.wasteLog };
+        if (Array.isArray(p.memos)) {
+          const nm = p.memos.map(o => ({
+            text: String(o.text || '').trim(),
+            date: /^\d{4}-\d{2}-\d{2}$/.test(o.date || '') ? o.date : ''
+          })).filter(o => o.text);
+          if ($('importReplace').checked) memos = [];
+          nm.forEach(o => memos.push({ ...o, id: nextMemo++, added: Date.now() + nextMemo }));
+        }
         if (p.goals && typeof p.goals === 'object' && $('importReplace').checked) {
           goals = {
             final: p.goals.final && typeof p.goals.final === 'object' ? { text: String(p.goals.final.text || ''), due: p.goals.final.due || '', done: !!p.goals.final.done } : { text: '', due: '', done: false },
@@ -2215,6 +2288,7 @@
   renderStudy();
   renderQuizSetup();
   renderDiario();
+  renderMemos();
   updateTimerUI();
   if (timer.running) { $('dMat').value = timer.mat; startTimerLoop(); }
 })();
