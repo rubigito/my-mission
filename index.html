@@ -170,6 +170,34 @@
   .streak-label { font-size: 12px; color: var(--ink-sub); letter-spacing: 0.05em; }
   .streak-label b { color: var(--amber); font-style: italic; }
 
+  /* ===== TRAGUARDO(目標) ===== */
+  .final-goal {
+    border: 1px solid rgba(255,194,51,0.4);
+    border-left: 4px solid var(--amber);
+    padding: 10px 12px;
+    font-style: italic; font-weight: 700; font-size: 15px;
+    background: rgba(255,194,51,0.05);
+    margin-bottom: 6px;
+  }
+  .final-goal.done { opacity: 0.7; }
+  .final-goal.done #gFinalText { text-decoration: line-through; }
+  .goal-sec { margin-top: 14px; padding-top: 10px; border-top: 1px solid rgba(63,169,245,0.15); }
+  .goal-head { font-size: 12.5px; color: var(--cyan); font-weight: 800; letter-spacing: 0.08em; margin-bottom: 6px; }
+  .goal-head .cnt { color: var(--ink-sub); font-weight: 600; margin-left: 6px; }
+  ul.goal-list { list-style: none; margin: 0 0 8px; padding: 0; }
+  ul.goal-list li {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 8px;
+    border-left: 2px solid var(--cyan-deep);
+    background: rgba(4,14,30,0.5);
+    margin-bottom: 4px;
+    font-size: 14px;
+  }
+  ul.goal-list li.done { opacity: 0.55; }
+  ul.goal-list li.done .g-text { text-decoration: line-through; }
+  ul.goal-list .g-text { flex: 1; word-break: break-word; }
+  ul.goal-list input[type="checkbox"] { width: 22px; height: 22px; accent-color: var(--amber); flex-shrink: 0; }
+
   /* ===== RIPOSO(休息) ===== */
   .rest-feedback {
     border: 1px solid var(--line);
@@ -793,6 +821,44 @@
 
   <!-- ============ DIARIO(学習記録)タブ ============ -->
   <section id="tab-diario" class="hidden">
+    <div class="panel" style="border-left-color: var(--amber);">
+      <div class="panel-title" style="color: var(--amber);">TRAGUARDO<span class="jp">目標 — 最終・月間・週間</span></div>
+      <!-- 最終目標 -->
+      <div id="gFinalView" class="hidden">
+        <div class="final-goal">
+          <label class="small" style="float:right"><input type="checkbox" id="gFinalDone"> 達成</label>
+          <div id="gFinalText"></div>
+          <div class="notice" id="gFinalDue"></div>
+        </div>
+        <button class="ghost" id="gFinalEditBtn"><span>✏️ 最終目標を編集</span></button>
+      </div>
+      <div id="gFinalForm" class="form-stack">
+        <input type="text" id="gfText" placeholder="最終目標(例: ○○の資格に合格する)">
+        <div class="grid-2">
+          <input type="date" id="gfDue" title="期日(任意)">
+          <button class="primary" id="gfSave"><span>🏁 目標を掲げる</span></button>
+        </div>
+      </div>
+      <!-- 月間目標 -->
+      <div class="goal-sec">
+        <div class="goal-head" id="gmHead"></div>
+        <ul class="goal-list" id="gmList"></ul>
+        <div class="grid-2">
+          <input type="text" id="gmInput" placeholder="今月の目標を追加">
+          <button id="gmAdd"><span>＋ 追加(達成で+5)</span></button>
+        </div>
+      </div>
+      <!-- 週間目標 -->
+      <div class="goal-sec">
+        <div class="goal-head" id="gwHead"></div>
+        <ul class="goal-list" id="gwList"></ul>
+        <div class="grid-2">
+          <input type="text" id="gwInput" placeholder="今週の目標を追加">
+          <button id="gwAdd"><span>＋ 追加(達成で+2)</span></button>
+        </div>
+      </div>
+    </div>
+
     <div class="panel" id="normaPanel">
       <div class="panel-title">OGGI<span class="jp">今日のあゆみ</span></div>
       <div class="progress-row">
@@ -959,6 +1025,8 @@
   let settings = { norm: 120, wasteLog: false };
   let timer = { running: false, startTs: 0, mat: '' };
   let pendingMat = null;        // セッション終了後の学び記録用
+  let goals = { final: { text: '', due: '', done: false }, monthly: {}, weekly: {} };
+  let nextGoal = 1;
   let filterCat = 'all', filterTag = 'all';
   let editingId = null, editingSid = null;
   let stockPromptId = null; // 完了直後に「学びをストックする?」を出すタスク
@@ -978,7 +1046,7 @@
   function saveData() {
     if (!storageOK) return;
     try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ tasks, study, nextId, nextSid, stats, sessions, wasted, settings, nextSess, timer, rests, nextRest }));
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ tasks, study, nextId, nextSid, stats, sessions, wasted, settings, nextSess, timer, rests, nextRest, goals, nextGoal }));
     } catch (_) { /* 容量超過等は無視(手動保存は常に可能) */ }
   }
   function loadData() {
@@ -1000,6 +1068,14 @@
       if (p.timer && p.timer.running && p.timer.startTs) timer = p.timer; // 計測中に閉じても再開
       if (Array.isArray(p.rests)) rests = p.rests;
       nextRest = Number(p.nextRest) || (Math.max(0, ...rests.map(r => r.id)) + 1);
+      if (p.goals && typeof p.goals === 'object') {
+        goals = {
+          final: p.goals.final && typeof p.goals.final === 'object' ? { text: String(p.goals.final.text || ''), due: p.goals.final.due || '', done: !!p.goals.final.done } : { text: '', due: '', done: false },
+          monthly: p.goals.monthly && typeof p.goals.monthly === 'object' ? p.goals.monthly : {},
+          weekly: p.goals.weekly && typeof p.goals.weekly === 'object' ? p.goals.weekly : {}
+        };
+      }
+      nextGoal = Number(p.nextGoal) || 1;
       return true;
     } catch (_) { return false; }
   }
@@ -1046,6 +1122,115 @@
     if (b.dataset.tab === 'quiz' && !quizState.running) renderQuizSetup();
     if (b.dataset.tab === 'diario') renderDiario();
   }));
+
+  // ====== TRAGUARDO(目標) ======
+  function monthKey() { return todayStr().slice(0, 7); }
+  function weekKey() {
+    const d = new Date(todayStr() + 'T00:00:00');
+    d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); // 月曜始まり
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+  function goalUnits() {
+    let u = 0;
+    Object.values(goals.monthly).forEach(list => list.forEach(g => { if (g.done) u += 5; }));
+    Object.values(goals.weekly).forEach(list => list.forEach(g => { if (g.done) u += 2; }));
+    if (goals.final.done) u += 20;
+    return u;
+  }
+  function renderGoals() {
+    // 最終目標
+    const hasFinal = !!goals.final.text;
+    $('gFinalView').classList.toggle('hidden', !hasFinal);
+    $('gFinalForm').classList.toggle('hidden', hasFinal);
+    if (hasFinal) {
+      $('gFinalText').textContent = '🏁 ' + goals.final.text;
+      $('gFinalDone').checked = goals.final.done;
+      document.querySelector('.final-goal').classList.toggle('done', goals.final.done);
+      if (goals.final.due) {
+        const n = daysUntil(goals.final.due);
+        $('gFinalDue').textContent = goals.final.done ? '達成おめでとう!' :
+          n === null ? '' : n < 0 ? '期日を' + (-n) + '日超過(' + goals.final.due + ')' : 'あと' + n + '日(' + goals.final.due + ')';
+      } else {
+        $('gFinalDue').textContent = goals.final.done ? '達成おめでとう!' : '';
+      }
+    } else {
+      $('gfText').value = goals.final.text;
+      $('gfDue').value = goals.final.due;
+    }
+    // 月間・週間
+    const mk = monthKey(), wk = weekKey();
+    if (!goals.monthly[mk]) goals.monthly[mk] = [];
+    if (!goals.weekly[wk]) goals.weekly[wk] = [];
+    const wEnd = new Date(wk + 'T00:00:00'); wEnd.setDate(wEnd.getDate() + 6);
+    const wkLabel = wk.slice(5).replace('-', '/') + '〜' + (wEnd.getMonth() + 1) + '/' + wEnd.getDate();
+    const renderList = (list, elId, scope) => {
+      $(elId).innerHTML = list.map(g =>
+        '<li class="' + (g.done ? 'done' : '') + '" data-gid="' + g.id + '" data-scope="' + scope + '">' +
+          '<input type="checkbox"' + (g.done ? ' checked' : '') + '>' +
+          '<span class="g-text">' + esc(g.text) + '</span>' +
+          '<button class="ghost" data-act="gdel"><span>🗑️</span></button>' +
+        '</li>').join('') || '<li style="border:none;background:none;color:var(--ink-muted);font-size:12.5px;">まだ目標がありません</li>';
+    };
+    const ml = goals.monthly[mk], wl = goals.weekly[wk];
+    $('gmHead').innerHTML = 'OBIETTIVO MENSILE — ' + Number(mk.slice(5)) + '月の目標<span class="cnt">' + ml.filter(g => g.done).length + '/' + ml.length + ' 達成</span>';
+    $('gwHead').innerHTML = 'OBIETTIVO SETTIMANALE — 今週(' + wkLabel + ')<span class="cnt">' + wl.filter(g => g.done).length + '/' + wl.length + ' 達成</span>';
+    renderList(ml, 'gmList', 'm');
+    renderList(wl, 'gwList', 'w');
+  }
+  $('gfSave').addEventListener('click', () => {
+    const t = $('gfText').value.trim();
+    if (!t) { $('gfText').focus(); return; }
+    goals.final.text = t;
+    goals.final.due = $('gfDue').value;
+    goals.final.done = false;
+    renderGoals(); saveData();
+  });
+  $('gFinalEditBtn').addEventListener('click', () => {
+    $('gfText').value = goals.final.text;
+    $('gfDue').value = goals.final.due;
+    goals.final.text = '';
+    renderGoals();
+  });
+  $('gFinalDone').addEventListener('change', () => {
+    const before = Math.floor(rewardUnits() / 5);
+    goals.final.done = $('gFinalDone').checked;
+    renderGoals(); renderTodo(); saveData();
+    if (Math.floor(rewardUnits() / 5) > before) celebrate(Math.floor(rewardUnits() / 5));
+  });
+  function addGoal(scope) {
+    const input = scope === 'm' ? $('gmInput') : $('gwInput');
+    const t = input.value.trim();
+    if (!t) { input.focus(); return; }
+    const key = scope === 'm' ? monthKey() : weekKey();
+    const store = scope === 'm' ? goals.monthly : goals.weekly;
+    if (!store[key]) store[key] = [];
+    store[key].push({ id: nextGoal++, text: t, done: false });
+    input.value = '';
+    renderGoals(); saveData();
+  }
+  $('gmAdd').addEventListener('click', () => addGoal('m'));
+  $('gwAdd').addEventListener('click', () => addGoal('w'));
+  function goalListHandler(e) {
+    const li = e.target.closest('li[data-gid]');
+    if (!li) return;
+    const scope = li.dataset.scope, id = Number(li.dataset.gid);
+    const key = scope === 'm' ? monthKey() : weekKey();
+    const store = scope === 'm' ? goals.monthly : goals.weekly;
+    const list = store[key] || [];
+    const g = list.find(x => x.id === id);
+    if (!g) return;
+    if (e.target.closest('[data-act="gdel"]')) {
+      store[key] = list.filter(x => x.id !== id);
+      renderGoals(); renderTodo(); saveData();
+    } else if (e.target.type === 'checkbox') {
+      const before = Math.floor(rewardUnits() / 5);
+      g.done = e.target.checked;
+      renderGoals(); renderTodo(); saveData();
+      if (Math.floor(rewardUnits() / 5) > before) celebrate(Math.floor(rewardUnits() / 5));
+    }
+  }
+  $('gmList').addEventListener('click', goalListHandler);
+  $('gwList').addEventListener('click', goalListHandler);
 
   // ====== RIPOSO(休息記録) ======
   // 回復度の基準値は睡眠科学・注意回復理論・運動と気分の研究などの一般的知見に基づく目安。
@@ -1350,6 +1535,7 @@
     $('sessEmpty').classList.toggle('hidden', !!sessions.length);
 
     renderRestStats();
+    renderGoals();
 
     // 設定欄
     $('normInput').value = settings.norm;
@@ -1482,7 +1668,7 @@
   // ====== ご褒美(星)表示 ======
   // 達成カウント = タスク完了数 + 学習30分ごとに1 − 堕落30分ごとに1
   function totalWasteMin() { return wasted.reduce((a, w) => a + w.min, 0); }
-  function rewardUnits() { return stats.totalDone + Math.floor(totalStudyMin() / 30) - Math.floor(totalWasteMin() / 30); }
+  function rewardUnits() { return stats.totalDone + Math.floor(totalStudyMin() / 30) - Math.floor(totalWasteMin() / 30) + goalUnits(); }
   function renderReward() {
     const units = rewardUnits();
     const stars = Math.max(0, Math.floor(units / 5));
@@ -1499,7 +1685,8 @@
     }
     const st = streak();
     const wasteU = Math.floor(totalWasteMin() / 30);
-    $('rewardNext').textContent = '達成 ' + units + '(タスク' + stats.totalDone + '+学習' + Math.floor(totalStudyMin() / 30) + (wasteU ? '−堕落' + wasteU : '') + ') / 次の星まで' + toNext +
+    const gU = goalUnits();
+    $('rewardNext').textContent = '達成 ' + units + '(タスク' + stats.totalDone + '+学習' + Math.floor(totalStudyMin() / 30) + (gU ? '+目標' + gU : '') + (wasteU ? '−堕落' + wasteU : '') + ') / 次の星まで' + toNext +
       ' / ⚔連続' + st + '日 / 今日' + dayTotal(todayStr()) + '/' + settings.norm + '分' + (stars >= 10 ? ' 👑' : '');
     $('medallion').textContent = units < 0 ? '💀' : stars >= 10 ? '👑' : '★';
   }
@@ -1799,7 +1986,8 @@
       sessions: sessions.map(({ id, added, ...rest }) => rest),
       rests: rests.map(({ id, added, ...rest }) => rest),
       wasted: wasted,
-      settings: settings
+      settings: settings,
+      goals: goals
     }, null, 2);
   }
   function ioMsg(m) { $('ioMsg').textContent = m; setTimeout(() => { if ($('ioMsg').textContent === m) $('ioMsg').textContent = ''; }, 4000); }
@@ -1884,6 +2072,15 @@
         }
         if (Array.isArray(p.wasted) && $('importReplace').checked) wasted = p.wasted.filter(w => w && w.min > 0);
         if (p.settings && $('importReplace').checked) settings = { norm: Number(p.settings.norm) || 120, wasteLog: !!p.settings.wasteLog };
+        if (p.goals && typeof p.goals === 'object' && $('importReplace').checked) {
+          goals = {
+            final: p.goals.final && typeof p.goals.final === 'object' ? { text: String(p.goals.final.text || ''), due: p.goals.final.due || '', done: !!p.goals.final.done } : { text: '', due: '', done: false },
+            monthly: p.goals.monthly || {}, weekly: p.goals.weekly || {}
+          };
+          let maxId = 0;
+          [goals.monthly, goals.weekly].forEach(st => Object.values(st).forEach(l => l.forEach(g => { if (g.id > maxId) maxId = g.id; })));
+          nextGoal = maxId + 1;
+        }
       }
     } catch (_) {
       newTasks = raw.split('\n').map(s => s.replace(/^[-*・☐□✓✔\s]+/, '').trim()).filter(Boolean)
