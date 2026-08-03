@@ -474,6 +474,21 @@
   .t-check { width: 26px; height: 26px; margin-top: 2px; accent-color: var(--cyan); cursor: pointer; flex-shrink: 0; }
   .t-body { flex: 1; min-width: 0; }
   .t-title { font-size: 15px; font-weight: 700; word-break: break-word; }
+  .t-note {
+    font-size: 12.5px; color: var(--ink-sub);
+    margin-top: 3px; padding-left: 8px;
+    border-left: 2px solid rgba(63,169,245,0.3);
+    white-space: pre-wrap; word-break: break-word;
+    cursor: pointer;
+  }
+  .t-note.collapsed {
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .t-note.collapsed::before { content: "▸ "; color: var(--cyan); }
+  .t-note:not(.collapsed)::before { content: "▾ "; color: var(--cyan); }
   .t-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 5px; align-items: center; }
   .t-actions { display: flex; gap: 2px; flex-shrink: 0; }
   .empty { text-align: center; color: var(--ink-muted); padding: 26px 0; font-size: 13.5px; font-style: italic; letter-spacing: 0.05em; }
@@ -778,6 +793,7 @@
       <ul class="memo-list" id="memoList"></ul>
       <div class="form-stack">
         <input type="text" id="pmText" placeholder="忘れてはいけないこと(例: 保険の更新、◯◯さんに連絡)">
+        <textarea id="pmNote" rows="1" placeholder="詳細(任意)"></textarea>
         <div class="grid-2">
           <input type="date" id="pmDate" title="日付(任意)">
           <button id="pmAdd"><span>📌 とめておく</span></button>
@@ -788,7 +804,8 @@
     <div class="panel">
       <div class="panel-title">NUOVA MISSIONE<span class="jp">新しいタスク</span></div>
       <form class="form-stack" id="addForm">
-        <input type="text" id="inTitle" placeholder="やることを入力…(例: 銀行に行く)" autocomplete="off">
+        <input type="text" id="inTitle" placeholder="タイトル(例: 銀行に行く)" autocomplete="off">
+        <textarea id="inNote" rows="1" placeholder="詳細(任意)— 補足・手順・場所など"></textarea>
         <div class="grid-3a">
           <input type="date" id="inDue" title="期限">
           <select id="inPri" title="優先度">
@@ -1166,7 +1183,9 @@
       const due = m.date ? fmtDue(m.date) : null;
       return '<li class="' + cls + '" data-pm="' + m.id + '">' +
         '<span>📌</span>' +
-        '<span class="pm-text">' + esc(m.text) + '</span>' +
+        '<span class="pm-text">' + esc(m.text) +
+          (m.note ? '<div class="t-note collapsed">' + esc(m.note) + '</div>' : '') +
+        '</span>' +
         (due ? '<span class="badge ' + due.cls + '"><span>' + due.txt + '</span></span>' : '') +
         '<button class="ghost" data-act="pmdel" title="削除"><span>🗑️</span></button>' +
       '</li>';
@@ -1175,11 +1194,15 @@
   $('pmAdd').addEventListener('click', () => {
     const t = $('pmText').value.trim();
     if (!t) { $('pmText').focus(); return; }
-    memos.push({ id: nextMemo++, text: t, date: $('pmDate').value || '', added: Date.now() });
-    $('pmText').value = ''; $('pmDate').value = '';
+    memos.push({ id: nextMemo++, text: t, note: $('pmNote').value.trim(), date: $('pmDate').value || '', added: Date.now() });
+    $('pmText').value = ''; $('pmNote').value = ''; $('pmDate').value = '';
     renderMemos(); saveData();
   });
   $('memoList').addEventListener('click', e => {
+    if (e.target.classList.contains('t-note')) {
+      e.target.classList.toggle('collapsed');
+      return;
+    }
     const act = e.target.closest('[data-act="pmdel"]');
     if (!act) return;
     const id = Number(e.target.closest('li[data-pm]').dataset.pm);
@@ -1690,6 +1713,7 @@
         ? '<div class="t-title">' + esc(t.title) + '</div>' +
           '<div class="edit-row">' +
             '<input type="text" class="e-title" value="' + esc(t.title) + '">' +
+            '<textarea class="e-note" rows="2" placeholder="詳細(任意)">' + esc(t.note || '') + '</textarea>' +
             '<div class="grid-2">' +
               '<input type="date" class="e-due" value="' + esc(t.due || '') + '">' +
               '<select class="e-pri">' + ['high','mid','low'].map(p => '<option value="' + p + '"' + (t.pri === p ? ' selected' : '') + '>優先度: ' + PRI_LABEL[p] + '</option>').join('') + '</select>' +
@@ -1703,6 +1727,7 @@
             '</div>' +
           '</div>'
         : '<div class="t-title">' + esc(t.title) + '</div>' +
+          (t.note ? '<div class="t-note collapsed">' + esc(t.note) + '</div>' : '') +
           '<div class="t-meta">' +
             '<span class="badge ' + priCls + '"><span>優先度: ' + PRI_LABEL[t.pri] + '</span></span>' +
             '<span class="badge"><span>' + esc(t.cat) + '</span></span>' +
@@ -1766,8 +1791,9 @@
     e.preventDefault();
     const title = $('inTitle').value.trim();
     if (!title) { $('inTitle').focus(); return; }
-    tasks.push({ id: nextId++, title, due: $('inDue').value, pri: $('inPri').value, cat: $('inCat').value, done: false, added: Date.now() });
+    tasks.push({ id: nextId++, title, note: $('inNote').value.trim(), due: $('inDue').value, pri: $('inPri').value, cat: $('inCat').value, done: false, added: Date.now() });
     $('inTitle').value = '';
+    $('inNote').value = '';
     $('inTitle').focus();
     renderTodo();
   });
@@ -1778,6 +1804,10 @@
     const id = Number(li.dataset.id);
     const t = tasks.find(x => x.id === id);
     if (!t) return;
+    if (e.target.classList.contains('t-note')) {
+      e.target.classList.toggle('collapsed');
+      return;
+    }
     const act = e.target.closest('[data-act]');
     if (e.target.classList.contains('t-check')) {
       t.done = e.target.checked;
@@ -1809,6 +1839,7 @@
     } else if (act && act.dataset.act === 'save') {
       const nt = li.querySelector('.e-title').value.trim();
       if (nt) t.title = nt;
+      t.note = li.querySelector('.e-note').value.trim();
       t.due = li.querySelector('.e-due').value;
       t.pri = li.querySelector('.e-pri').value;
       t.cat = li.querySelector('.e-cat').value;
@@ -2087,6 +2118,7 @@
   function normTask(o) {
     return {
       title: String(o.title || o.name || '').trim(),
+      note: String(o.note || '').trim(),
       due: /^\d{4}-\d{2}-\d{2}$/.test(o.due || '') ? o.due : '',
       pri: ['high','mid','low'].includes(o.pri) ? o.pri : 'mid',
       cat: CATEGORIES.includes(o.cat) ? o.cat : 'その他',
@@ -2140,6 +2172,7 @@
         if (Array.isArray(p.memos)) {
           const nm = p.memos.map(o => ({
             text: String(o.text || '').trim(),
+            note: String(o.note || '').trim(),
             date: /^\d{4}-\d{2}-\d{2}$/.test(o.date || '') ? o.date : ''
           })).filter(o => o.text);
           if ($('importReplace').checked) memos = [];
