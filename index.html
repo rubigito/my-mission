@@ -2139,6 +2139,7 @@
     raw = raw.trim();
     if (!raw) { ioMsg('読み込む内容がありません。下の欄に貼り付けるか、ファイルを選択してください。'); return; }
     let newTasks = [], newStudy = [];
+    let nMemos = 0, nGoals = 0, nSess = 0, nRests = 0;
     try {
       const p = JSON.parse(raw);
       if (Array.isArray(p)) {
@@ -2154,7 +2155,7 @@
             min: Math.max(1, Math.min(720, Math.floor(Number(o.min)) || 0))
           })).filter(o => o.min >= 1);
           if ($('importReplace').checked) sessions = [];
-          ns.forEach(o => sessions.push({ ...o, id: nextSess++, added: Date.now() + nextSess }));
+          ns.forEach(o => { sessions.push({ ...o, id: nextSess++, added: Date.now() + nextSess }); nSess++; });
         }
         if (Array.isArray(p.rests)) {
           const nr = p.rests.map(o => ({
@@ -2165,7 +2166,7 @@
             feel: [1,2,3,4,5].includes(o.feel) ? o.feel : null
           })).filter(o => o.min >= 1);
           if ($('importReplace').checked) rests = [];
-          nr.forEach(o => rests.push({ ...o, id: nextRest++, added: Date.now() + nextRest }));
+          nr.forEach(o => { rests.push({ ...o, id: nextRest++, added: Date.now() + nextRest }); nRests++; });
         }
         if (Array.isArray(p.wasted) && $('importReplace').checked) wasted = p.wasted.filter(w => w && w.min > 0);
         if (p.settings && $('importReplace').checked) settings = { norm: Number(p.settings.norm) || 120, wasteLog: !!p.settings.wasteLog };
@@ -2176,28 +2177,41 @@
             date: /^\d{4}-\d{2}-\d{2}$/.test(o.date || '') ? o.date : ''
           })).filter(o => o.text);
           if ($('importReplace').checked) memos = [];
-          nm.forEach(o => memos.push({ ...o, id: nextMemo++, added: Date.now() + nextMemo }));
+          nm.forEach(o => { memos.push({ ...o, id: nextMemo++, added: Date.now() + nextMemo }); nMemos++; });
         }
-        if (p.goals && typeof p.goals === 'object' && $('importReplace').checked) {
-          goals = {
-            final: p.goals.final && typeof p.goals.final === 'object' ? { text: String(p.goals.final.text || ''), due: p.goals.final.due || '', done: !!p.goals.final.done } : { text: '', due: '', done: false },
-            monthly: p.goals.monthly || {}, weekly: p.goals.weekly || {}
+        if (p.goals && typeof p.goals === 'object') {
+          if ($('importReplace').checked) goals = { final: { text: '', due: '', done: false }, monthly: {}, weekly: {} };
+          const gf = p.goals.final;
+          if (gf && typeof gf === 'object' && String(gf.text || '').trim()) {
+            goals.final = { text: String(gf.text).trim(), due: /^\d{4}-\d{2}-\d{2}$/.test(gf.due || '') ? gf.due : '', done: !!gf.done };
+            nGoals++;
+          }
+          const mergeStore = (src, dst) => {
+            if (!src || typeof src !== 'object') return;
+            Object.entries(src).forEach(([k, list]) => {
+              if (!Array.isArray(list) || !/^\d{4}-\d{2}(-\d{2})?$/.test(k)) return;
+              if (!dst[k]) dst[k] = [];
+              list.forEach(o => {
+                const t = String(o.text || '').trim();
+                if (t) { dst[k].push({ id: nextGoal++, text: t, done: !!o.done }); nGoals++; }
+              });
+            });
           };
-          let maxId = 0;
-          [goals.monthly, goals.weekly].forEach(st => Object.values(st).forEach(l => l.forEach(g => { if (g.id > maxId) maxId = g.id; })));
-          nextGoal = maxId + 1;
+          mergeStore(p.goals.monthly, goals.monthly);
+          mergeStore(p.goals.weekly, goals.weekly);
         }
       }
     } catch (_) {
       newTasks = raw.split('\n').map(s => s.replace(/^[-*・☐□✓✔\s]+/, '').trim()).filter(Boolean)
         .map(s => ({ title: s, due: '', pri: 'mid', cat: 'その他', done: false }));
     }
-    if (!newTasks.length && !newStudy.length) { ioMsg('データを読み取れませんでした。形式をご確認ください。'); return; }
-    if ($('importReplace').checked || (tasks.length === 0 && study.length === 0)) { tasks = []; study = []; }
+    if (!newTasks.length && !newStudy.length && !nMemos && !nGoals && !nSess && !nRests) { ioMsg('データを読み取れませんでした。形式をご確認ください。'); return; }
+    if ($('importReplace').checked) { tasks = []; study = []; }
     newTasks.forEach(o => tasks.push({ ...o, id: nextId++, added: Date.now() + nextId }));
     newStudy.forEach(o => study.push({ ...o, id: nextSid++, added: Date.now() + nextSid }));
-    ioMsg('タスク' + newTasks.length + '件、学びストック' + newStudy.length + '件を読み込みました。');
-    renderTodo(); renderStudy(); renderDiario();
+    ioMsg('読み込み完了 — タスク' + newTasks.length + ' / 学び' + newStudy.length + ' / リマインド' + nMemos + ' / 目標' + nGoals + (nSess ? ' / 学習記録' + nSess : '') + (nRests ? ' / 休息' + nRests : ''));
+    renderTodo(); renderStudy(); renderDiario(); renderMemos();
+    saveData();
   }
 
   // ====== PINロック ======
