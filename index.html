@@ -38,72 +38,85 @@
     -webkit-tap-highlight-color: transparent;
     -webkit-text-size-adjust: 100%;
   }
-  /* 深海に沈んでいくグラデーション: 上=水面の光 → 下=漆黒の深淵
-     (iOS Safariはbackground-attachment:fixed非対応のため固定レイヤーで描画) */
-  body::before {
-    content: "";
-    position: fixed;
-    inset: 0;
-    z-index: -1;
-    pointer-events: none;
-    background:
-      repeating-linear-gradient(115deg, rgba(47,196,255,0.025) 0 2px, transparent 2px 90px),
-      radial-gradient(1100px 460px at 50% -8%, rgba(140,225,255,0.28), rgba(60,170,220,0.10) 45%, transparent 72%),
-      radial-gradient(700px 300px at 20% -4%, rgba(120,210,250,0.12), transparent 65%),
-      linear-gradient(180deg,
-        #12557f 0%,
-        #0d3f66 18%,
-        #0a2c4e 38%,
-        #071d38 58%,
-        #041124 76%,
-        #020813 90%,
-        #000308 100%);
+  /* 星降る海 — 満天の星が鏡のような海面に映る情景。
+     今日の学習が進むほど夜明けに近づく(--達成度は .ss-dawn の opacity で表現) */
+  #skysea {
+    position: fixed; inset: 0; z-index: -1;
+    pointer-events: none; overflow: hidden;
   }
-  /* 泡沫(うたかた)— 深海から立ちのぼる泡 */
-  #bubbles {
-    position: fixed;
-    inset: 0;
-    z-index: -1;
-    pointer-events: none;
-    overflow: hidden;
+  #skysea > div { position: absolute; inset: 0; }
+  .ss-night {
+    background: linear-gradient(180deg,
+      #070f24 0%,
+      #0b1832 26%,
+      #14264a 44%,
+      #1c3156 50%,
+      #16294d 55%,
+      #0d1c3a 72%,
+      #060e21 100%);
   }
-  .bubble {
-    position: absolute;
-    bottom: -40px;
-    border-radius: 50%;
-    background: radial-gradient(circle at 33% 30%,
-      rgba(200,240,255,0.55),
-      rgba(120,210,250,0.18) 45%,
-      rgba(47,196,255,0.06) 70%,
-      transparent 75%);
-    box-shadow: inset -2px -2px 4px rgba(47,196,255,0.15), 0 0 6px rgba(140,225,255,0.18);
+  /* 海面のかすかな波紋 */
+  .ss-night::after {
+    content: ""; position: absolute; left: 0; right: 0; top: 50%; bottom: 0;
+    background: repeating-linear-gradient(180deg,
+      rgba(200,220,255,0.022) 0 1px, transparent 1px 6px);
+  }
+  /* 水平線の靄 */
+  .ss-haze {
+    top: 45% !important; height: 10% !important; bottom: auto !important;
+    background: linear-gradient(180deg,
+      transparent,
+      rgba(165,185,215,0.10) 40%,
+      rgba(175,190,220,0.14) 55%,
+      transparent);
+    filter: blur(5px);
+  }
+  /* 夜明けレイヤー(達成度に応じてopacityが上がる) */
+  .ss-dawn {
     opacity: 0;
-    animation-name: bubble-rise;
-    animation-timing-function: linear;
-    animation-iteration-count: infinite;
-    will-change: transform, opacity;
+    transition: opacity 1.5s ease;
+    background:
+      radial-gradient(130% 55% at 50% 50%, rgba(255,180,120,0.50), rgba(255,150,125,0.16) 32%, transparent 62%),
+      linear-gradient(180deg,
+        #23477a 0%,
+        #40628f 28%,
+        #8f7a96 42%,
+        #e8a37e 50%,
+        #b98a78 56%,
+        #33507c 74%,
+        #0e1c38 100%);
   }
-  @keyframes bubble-rise {
-    0%   { transform: translate3d(0, 0, 0) scale(0.9); opacity: 0; }
-    8%   { opacity: var(--o, 0.4); }
-    50%  { transform: translate3d(calc(var(--drift) * 0.5), -55vh, 0) scale(1); }
-    85%  { opacity: var(--o, 0.4); }
-    100% { transform: translate3d(var(--drift), -112vh, 0) scale(1.08); opacity: 0; }
+  /* 朝日(ノルマ達成で昇る) */
+  .ss-sun {
+    top: 50% !important; left: 50% !important;
+    width: 110px !important; height: 110px !important;
+    inset: auto !important;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: radial-gradient(circle,
+      rgba(255,240,200,0.95),
+      rgba(255,200,130,0.55) 45%,
+      transparent 72%);
+    filter: blur(1px);
+    opacity: 0;
+    transition: opacity 1.5s ease;
+  }
+  .ss-stars { transition: opacity 1.5s ease; }
+  .ss-star {
+    position: absolute;
+    background: #dfe8ff;
+    border-radius: 50%;
+    animation: twinkle var(--td, 3s) ease-in-out var(--tdel, 0s) infinite;
+  }
+  .ss-star.refl { filter: blur(1px); }
+  @keyframes twinkle {
+    0%, 100% { opacity: var(--o1, 0.9); }
+    50%      { opacity: var(--o2, 0.25); }
   }
   @media (prefers-reduced-motion: reduce) {
-    .bubble { display: none; }
+    .ss-star { animation: none; }
     .cele-star, .cele-text { animation-duration: 0.6s !important; }
   }
-  /* 海中に眠る白亜の都(塔と回廊のシルエット) */
-  #city {
-    position: fixed;
-    left: 0; right: 0; bottom: 0;
-    z-index: -1;
-    pointer-events: none;
-    width: 100%;
-    height: min(30vh, 240px);
-  }
-  #city svg { width: 100%; height: 100%; display: block; }
 
   /* ===== ご褒美(星)システム ===== */
   .reward-row {
@@ -673,65 +686,13 @@
 </style>
 </head>
 <body>
-<div id="city" aria-hidden="true">
-  <svg viewBox="0 0 1200 260" preserveAspectRatio="xMidYMax slice">
-    <defs>
-      <!-- 上に向かって光に溶けるフェード -->
-      <linearGradient id="cityfade" x1="0" y1="1" x2="0" y2="0">
-        <stop offset="0" stop-color="#dceeff" stop-opacity="0.30"/>
-        <stop offset="0.75" stop-color="#dceeff" stop-opacity="0.14"/>
-        <stop offset="1" stop-color="#dceeff" stop-opacity="0.04"/>
-      </linearGradient>
-    </defs>
-    <!-- 遠景: かすかな尖塔群 -->
-    <g fill="url(#cityfade)" opacity="0.45">
-      <polygon points="150,260 162,140 174,260"/>
-      <polygon points="240,260 248,190 256,260"/>
-      <polygon points="840,260 852,150 864,260"/>
-      <polygon points="1010,260 1018,186 1026,260"/>
-      <rect x="60" y="226" width="120" height="34"/>
-      <rect x="920" y="230" width="150" height="30"/>
-    </g>
-    <!-- 近景: 鋭い尖塔の都 -->
-    <g fill="url(#cityfade)">
-      <!-- 中央の大尖塔 -->
-      <polygon points="556,260 574,124 590,72 606,124 624,260"/>
-      <rect x="588.5" y="44" width="3" height="30"/>
-      <polygon points="590,34 594.5,44 590,54 585.5,44"/>
-      <!-- 左右の针塔 -->
-      <polygon points="472,260 486,150 500,260"/>
-      <rect x="485" y="128" width="2" height="24"/>
-      <polygon points="680,260 694,150 708,260"/>
-      <rect x="693" y="128" width="2" height="24"/>
-      <!-- 外側の塔 -->
-      <polygon points="330,260 342,176 354,260"/>
-      <polygon points="1080,260 1094,160 1108,260"/>
-      <polygon points="96,260 108,184 120,260"/>
-      <!-- 薄い回廊ライン -->
-      <rect x="120" y="238" width="360" height="3"/>
-      <rect x="700" y="238" width="380" height="3"/>
-      <rect x="150" y="244" width="300" height="16"/>
-      <rect x="730" y="244" width="320" height="16"/>
-    </g>
-    <!-- 尖頭アーチの開口部 -->
-    <g fill="rgba(4,17,36,0.55)">
-      <path d="M180 260 v-8 l9,-8 9,8 v8 z"/>
-      <path d="M228 260 v-8 l9,-8 9,8 v8 z"/>
-      <path d="M276 260 v-8 l9,-8 9,8 v8 z"/>
-      <path d="M324 260 v-8 l9,-8 9,8 v8 z"/>
-      <path d="M372 260 v-8 l9,-8 9,8 v8 z"/>
-      <path d="M760 260 v-8 l9,-8 9,8 v8 z"/>
-      <path d="M808 260 v-8 l9,-8 9,8 v8 z"/>
-      <path d="M856 260 v-8 l9,-8 9,8 v8 z"/>
-      <path d="M904 260 v-8 l9,-8 9,8 v8 z"/>
-      <path d="M952 260 v-8 l9,-8 9,8 v8 z"/>
-      <!-- 大尖塔の窓 -->
-      <path d="M580 260 v-26 l10,-14 10,14 v26 z"/>
-      <path d="M584 170 v-12 l6,-9 6,9 v12 z"/>
-    </g>
-  </svg>
+<div id="skysea" aria-hidden="true">
+  <div class="ss-night"></div>
+  <div class="ss-haze"></div>
+  <div class="ss-dawn" id="ssDawn"></div>
+  <div class="ss-sun" id="ssSun"></div>
+  <div class="ss-stars" id="ssStars"></div>
 </div>
-<div id="bubbles" aria-hidden="true"></div>
 <div id="celebrate" class="hidden" aria-hidden="true"></div>
 
 <div class="lock-overlay hidden" id="lockOverlay">
@@ -1560,6 +1521,7 @@
     $('normFill').style.width = pct + '%';
     $('normPct').textContent = pct + '%';
     $('normaPanel').classList.toggle('norm-done', today >= settings.norm);
+    updateScene();
     const st = streak();
     $('streakLabel').innerHTML = '⚔ 連続達成 <b>' + st + '日</b>' +
       (today >= settings.norm ? ' — 今日のノルマ達成!' : ' — 今日はあと' + Math.max(0, settings.norm - today) + '分');
@@ -2311,22 +2273,31 @@
     ? '✓ 自動保存が有効です。このブラウザに変更が自動で保存されます。機種変更やバックアップ用に、ときどき「ファイルに保存」もおすすめします。'
     : '⚠ この表示環境では自動保存が使えません。閉じる前に「ファイルに保存」でバックアップし、次回そのファイルを読み込んで復元してください。';
   $('inCat').innerHTML = CATEGORIES.map(c => '<option value="' + esc(c) + '">' + esc(c) + '</option>').join('');
-  // 泡沫の生成
-  (function makeBubbles() {
-    const holder = $('bubbles');
-    const n = Math.min(18, Math.max(10, Math.floor(window.innerWidth / 60)));
+  // 星降る海の生成
+  (function makeSkySea() {
+    const n = Math.min(90, Math.max(50, Math.floor(window.innerWidth / 5)));
     let html = '';
     for (let i = 0; i < n; i++) {
-      const size = 4 + Math.random() * 12;                    // 4〜16px
-      const left = Math.random() * 100;                       // 横位置 %
-      const dur = 9 + Math.random() * 13;                     // 9〜22秒
-      const delay = -Math.random() * dur;                     // 最初から画面に散らばるよう負の遅延
-      const drift = (Math.random() * 80 - 40).toFixed(0);     // 横揺れ -40〜40px
-      const o = (0.15 + Math.random() * 0.35).toFixed(2);     // 透明度
-      html += '<span class="bubble" style="left:' + left.toFixed(1) + '%;width:' + size.toFixed(1) + 'px;height:' + size.toFixed(1) + 'px;animation-duration:' + dur.toFixed(1) + 's;animation-delay:' + delay.toFixed(1) + 's;--drift:' + drift + 'px;--o:' + o + '"></span>';
+      const sky = i < n * 0.65; // 65%は空、35%は海面の映り込み
+      const size = (sky ? 1 + Math.random() * 1.8 : 1 + Math.random() * 1.4).toFixed(1);
+      const left = (Math.random() * 100).toFixed(1);
+      const top = sky ? (Math.random() * 46).toFixed(1) : (54 + Math.random() * 44).toFixed(1);
+      const o1 = (sky ? 0.5 + Math.random() * 0.5 : 0.15 + Math.random() * 0.25).toFixed(2);
+      const o2 = (o1 * (0.2 + Math.random() * 0.4)).toFixed(2);
+      const td = (2.5 + Math.random() * 4).toFixed(1);
+      const tdel = (-Math.random() * 6).toFixed(1);
+      html += '<span class="ss-star' + (sky ? '' : ' refl') + '" style="left:' + left + '%;top:' + top + '%;width:' + size + 'px;height:' + size + 'px;--o1:' + o1 + ';--o2:' + o2 + ';--td:' + td + 's;--tdel:' + tdel + 's"></span>';
     }
-    holder.innerHTML = html;
+    $('ssStars').innerHTML = html;
   })();
+
+  // 達成度に応じて夜明けに近づける(今日の学習分数 / ノルマ)
+  function updateScene() {
+    const p = Math.min(1, dayTotal(todayStr()) / settings.norm);
+    $('ssDawn').style.opacity = (p * 0.85).toFixed(2);
+    $('ssStars').style.opacity = (1 - p * 0.6).toFixed(2);
+    $('ssSun').style.opacity = p >= 1 ? '1' : '0';
+  }
 
   const now = new Date();
   const youbi = ['SUN','MON','TUE','WED','THU','FRI','SAT'][now.getDay()];
